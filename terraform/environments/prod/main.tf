@@ -177,5 +177,5 @@ module "ecs" {
 
   tags = local.common_tags
 
-  depends_on = [module.vpc, module.rds]
+  depends_on = [module.vpc]
 }
