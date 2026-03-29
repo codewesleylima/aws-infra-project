@@ -62,6 +62,27 @@ module "vpc" {
 }
 
 # ----------------------------------------------
+# ALB - Production
+# ----------------------------------------------
+module "alb" {
+  source = "../../modules/alb"
+
+  project_name      = var.project_name
+  environment       = "prod"
+  vpc_id            = module.vpc.vpc_id
+  public_subnet_ids = module.vpc.public_subnet_ids
+
+  enable_alb             = true
+  container_port        = 8080
+  health_check_path     = "/health"
+  health_check_matcher  = "200-299"
+  certificate_arn       = null
+  alb_logs_bucket       = null
+
+  depends_on = [module.vpc]
+}
+
+# ----------------------------------------------
 # S3 - Production with replication ready
 # ----------------------------------------------
 module "s3_storage" {
@@ -89,8 +110,6 @@ module "s3_storage" {
       expiration_days          = 365
     }
   ]
-
-  tags = local.common_tags
 }
 
 # ----------------------------------------------
@@ -132,7 +151,6 @@ module "ecs" {
   environment        = "prod"
   aws_region         = var.aws_region
   vpc_id             = module.vpc.vpc_id
-  public_subnet_ids  = module.vpc.public_subnet_ids
   private_subnet_ids = module.vpc.private_subnet_ids
 
   container_name  = "app"
@@ -161,14 +179,15 @@ module "ecs" {
     }
   ]
 
-  enable_alb         = true
-  enable_autoscaling = true
-  min_capacity       = 3
-  max_capacity       = 20
-  cpu_target_value   = 60
+  alb_target_group_arn   = module.alb.target_group_arn
+  alb_security_group_id  = module.alb.alb_security_group_id
+  enable_autoscaling     = true
+  min_capacity           = 3
+  max_capacity           = 20
+  cpu_target_value       = 60
 
   enable_container_insights = true
   enable_execute_command    = false
 
-  depends_on = [module.vpc]
+  depends_on = [module.vpc, module.alb]
 }

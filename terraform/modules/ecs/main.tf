@@ -135,9 +135,9 @@ resource "aws_ecs_service" "main" {
   }
 
   dynamic "load_balancer" {
-    for_each = var.enable_alb ? [1] : []
+    for_each = var.alb_target_group_arn != null ? [1] : []
     content {
-      target_group_arn = aws_lb_target_group.main[0].arn
+      target_group_arn = var.alb_target_group_arn
       container_name   = var.container_name
       container_port   = var.container_port
     }
@@ -167,7 +167,7 @@ resource "aws_security_group" "ecs" {
     from_port       = var.container_port
     to_port         = var.container_port
     protocol        = "tcp"
-    security_groups = var.enable_alb ? [aws_security_group.alb[0].id] : []
+    security_groups = var.alb_security_group_id != null ? [var.alb_security_group_id] : []
     description     = "Allow traffic from ALB"
   }
 
@@ -185,121 +185,6 @@ resource "aws_security_group" "ecs" {
 
   lifecycle {
     create_before_destroy = true
-  }
-}
-
-# ----------------------------------------------
-# Application Load Balancer (Optional)
-# ----------------------------------------------
-resource "aws_security_group" "alb" {
-  count       = var.enable_alb ? 1 : 0
-  name_prefix = "${var.project_name}-alb-${var.environment}-"
-  description = "Security group for ALB"
-  vpc_id      = var.vpc_id
-
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "Allow HTTPS traffic"
-  }
-
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "Allow HTTP traffic (redirect to HTTPS)"
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "Allow all outbound traffic"
-  }
-
-  tags = merge(var.tags, {
-    Name = "${var.project_name}-alb-sg-${var.environment}"
-  })
-
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-
-resource "aws_lb" "main" {
-  count              = var.enable_alb ? 1 : 0
-  name               = "${var.project_name}-alb-${var.environment}"
-  internal           = false
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb[0].id]
-  subnets            = var.public_subnet_ids
-
-  enable_deletion_protection = var.environment == "prod"
-  drop_invalid_header_fields = true
-
-  dynamic "access_logs" {
-    for_each = var.alb_logs_bucket != null ? [1] : []
-    content {
-      bucket  = var.alb_logs_bucket
-      prefix  = "alb/${var.project_name}-${var.environment}"
-      enabled = true
-    }
-  }
-
-  tags = var.tags
-}
-
-resource "aws_lb_target_group" "main" {
-  count       = var.enable_alb ? 1 : 0
-  name        = "${var.project_name}-tg-${var.environment}"
-  port        = var.container_port
-  protocol    = "HTTP"
-  vpc_id      = var.vpc_id
-  target_type = "ip"
-
-  health_check {
-    healthy_threshold   = 2
-    unhealthy_threshold = 3
-    timeout             = 5
-    interval            = 30
-    path                = var.health_check_path
-    matcher             = "200-299"
-  }
-
-  tags = var.tags
-}
-
-resource "aws_lb_listener" "https" {
-  count             = var.enable_alb && var.certificate_arn != null ? 1 : 0
-  load_balancer_arn = aws_lb.main[0].arn
-  port              = 443
-  protocol          = "HTTPS"
-  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
-  certificate_arn   = var.certificate_arn
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.main[0].arn
-  }
-}
-
-resource "aws_lb_listener" "http_redirect" {
-  count             = var.enable_alb ? 1 : 0
-  load_balancer_arn = aws_lb.main[0].arn
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type = "redirect"
-    redirect {
-      port        = "443"
-      protocol    = "HTTPS"
-      status_code = "HTTP_301"
-    }
   }
 }
 

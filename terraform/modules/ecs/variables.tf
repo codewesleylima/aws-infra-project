@@ -22,11 +22,6 @@ variable "vpc_id" {
   type        = string
 }
 
-variable "public_subnet_ids" {
-  description = "IDs das subnets públicas (para ALB)"
-  type        = list(string)
-}
-
 variable "private_subnet_ids" {
   description = "IDs das subnets privadas (para tasks)"
   type        = list(string)
@@ -101,12 +96,6 @@ variable "health_check" {
   default = null
 }
 
-variable "health_check_path" {
-  description = "Path para health check do ALB"
-  type        = string
-  default     = "/health"
-}
-
 variable "health_check_grace_period" {
   description = "Grace period para health check do service"
   type        = number
@@ -114,20 +103,14 @@ variable "health_check_grace_period" {
 }
 
 # Load Balancer
-variable "enable_alb" {
-  description = "Habilitar Application Load Balancer"
-  type        = bool
-  default     = true
-}
-
-variable "certificate_arn" {
-  description = "ARN do certificado SSL para HTTPS"
+variable "alb_target_group_arn" {
+  description = "ARN do target group do ALB (quando ALB está habilitado)"
   type        = string
   default     = null
 }
 
-variable "alb_logs_bucket" {
-  description = "Bucket S3 para logs do ALB"
+variable "alb_security_group_id" {
+  description = "ID do security group do ALB para permitir tráfego"
   type        = string
   default     = null
 }

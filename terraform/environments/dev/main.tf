@@ -63,6 +63,29 @@ provider "aws" {
 # All resources automatically tagged via provider.default_tags
 
 # ----------------------------------------------
+# ALB Module
+# ----------------------------------------------
+module "alb" {
+  source = "../../modules/alb"
+
+  project_name      = var.project_name
+  environment       = var.environment
+  vpc_id            = module.vpc.vpc_id
+  public_subnet_ids = module.vpc.public_subnet_ids
+
+  enable_alb             = true
+  container_port        = var.container_port
+  health_check_path     = "/health"
+  health_check_matcher  = "200-299"
+  certificate_arn       = null
+  alb_logs_bucket       = null
+
+  depends_on = [module.vpc]
+}
+
+# All resources automatically tagged via provider.default_tags
+
+# ----------------------------------------------
 # VPC Module
 # ----------------------------------------------
 module "vpc" {
@@ -134,7 +157,6 @@ module "ecs" {
   environment        = var.environment
   aws_region         = var.aws_region
   vpc_id             = module.vpc.vpc_id
-  public_subnet_ids  = module.vpc.public_subnet_ids
   private_subnet_ids = module.vpc.private_subnet_ids
 
   container_name  = var.container_name
@@ -158,11 +180,12 @@ module "ecs" {
 
   secrets = []
 
-  enable_alb                = true
-  enable_autoscaling        = true
-  min_capacity              = 1
-  max_capacity              = 5
+  alb_target_group_arn   = module.alb.target_group_arn
+  alb_security_group_id  = module.alb.alb_security_group_id
+  enable_autoscaling     = true
+  min_capacity           = 1
+  max_capacity           = 5
   enable_container_insights = true
 
-  depends_on = [module.vpc]
+  depends_on = [module.vpc, module.alb]
 }

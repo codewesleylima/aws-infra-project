@@ -36,6 +36,8 @@ provider "aws" {
       Repository  = "aws-infra-project"
     }
   }
+}
+
 # All resources automatically tagged via provider.default_tags
 
 # VPC
@@ -48,6 +50,25 @@ module "vpc" {
   availability_zones = ["us-east-1a", "us-east-1b"]
   enable_nat_gateway = true
   enable_flow_logs   = true
+}
+
+# ALB
+module "alb" {
+  source = "../../modules/alb"
+
+  project_name      = var.project_name
+  environment       = "staging"
+  vpc_id            = module.vpc.vpc_id
+  public_subnet_ids = module.vpc.public_subnet_ids
+
+  enable_alb             = true
+  container_port        = 8080
+  health_check_path     = "/health"
+  health_check_matcher  = "200-299"
+  certificate_arn       = null
+  alb_logs_bucket       = null
+
+  depends_on = [module.vpc]
 }
 
 # S3
@@ -102,7 +123,6 @@ module "ecs" {
   environment        = "staging"
   aws_region         = var.aws_region
   vpc_id             = module.vpc.vpc_id
-  public_subnet_ids  = module.vpc.public_subnet_ids
   private_subnet_ids = module.vpc.private_subnet_ids
 
   container_name  = "app"
@@ -125,10 +145,11 @@ module "ecs" {
     }
   ]
 
-  enable_alb         = true
-  enable_autoscaling = true
-  min_capacity       = 2
-  max_capacity       = 10
+  alb_target_group_arn   = module.alb.target_group_arn
+  alb_security_group_id  = module.alb.alb_security_group_id
+  enable_autoscaling     = true
+  min_capacity           = 2
+  max_capacity           = 10
 
-  depends_on = [module.vpc]
+  depends_on = [module.vpc, module.alb]
 }
