@@ -31,7 +31,12 @@ terraform {
 # Provider Configuration
 # ----------------------------------------------
 provider "aws" {
-  region = var.aws_region
+  region                  = var.aws_region
+  access_key              = var.aws_access_key
+  secret_key              = var.aws_secret_key
+  skip_credentials_validation = var.use_localstack
+  skip_metadata_api_check     = var.use_localstack
+  s3_force_path_style         = true
 
   default_tags {
     tags = {
@@ -39,6 +44,19 @@ provider "aws" {
       Project     = var.project_name
       ManagedBy   = "Terraform"
       Repository  = "aws-infra-project"
+    }
+  }
+
+  dynamic "endpoints" {
+    for_each = var.use_localstack ? [1] : []
+    content {
+      ec2            = var.localstack_endpoint
+      rds            = var.localstack_endpoint
+      s3             = var.localstack_endpoint
+      ecs            = var.localstack_endpoint
+      iam            = var.localstack_endpoint
+      secretsmanager = var.localstack_endpoint
+      cloudwatch     = var.localstack_endpoint
     }
   }
 }
