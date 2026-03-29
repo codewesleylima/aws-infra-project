@@ -123,7 +123,7 @@ module "rds" {
   environment             = var.environment
   vpc_id                  = module.vpc.vpc_id
   private_subnet_ids      = module.vpc.private_subnet_ids
-  allowed_security_groups = [module.ecs.ecs_security_group_id]
+  allowed_security_groups = []
 
   db_name          = var.db_name
   db_username      = var.db_username
@@ -172,12 +172,7 @@ module "ecs" {
     }
   ]
 
-  secrets = [
-    {
-      name       = "DATABASE_URL"
-      value_from = module.rds.db_credentials_secret_arn
-    }
-  ]
+  secrets = []
 
   enable_alb                = true
   enable_autoscaling        = true
