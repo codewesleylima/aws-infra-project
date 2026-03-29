@@ -83,6 +83,24 @@ module "alb" {
 }
 
 # ----------------------------------------------
+# CloudTrail - Production audit logging
+# ----------------------------------------------
+module "cloudtrail" {
+  source = "../../modules/cloudtrail"
+
+  project_name                = var.project_name
+  environment                 = "prod"
+  enable_cloudtrail           = true
+  enable_log_file_validation  = true
+  include_global_service_events = true
+  is_multi_region_trail       = true
+  kms_key_id                  = null
+  s3_log_retention_days       = 90
+
+  depends_on = [module.vpc]
+}
+
+# ----------------------------------------------
 # S3 - Production with replication ready
 # ----------------------------------------------
 module "s3_storage" {
