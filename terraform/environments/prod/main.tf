@@ -56,7 +56,7 @@ module "vpc" {
   project_name       = var.project_name
   environment        = "prod"
   vpc_cidr           = var.vpc_cidr
-  availability_zones = var.availability_zones
+  availability_zones = []  # Auto-discover AZs from region
   enable_nat_gateway = true
   enable_flow_logs   = true
 }

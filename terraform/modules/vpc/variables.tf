@@ -39,16 +39,12 @@ variable "vpc_cidr" {
 }
 
 variable "availability_zones" {
-  description = "Lista de Availability Zones para usar"
+  description = "List of availability zones to use (leave empty to auto-discover)"
   type        = list(string)
-  default     = ["us-east-1a", "us-east-1b"]
+  default     = []
   validation {
-    condition     = length(var.availability_zones) >= 2
-    error_message = "At least 2 availability zones must be specified."
-  }
-  validation {
-    condition     = length(var.availability_zones) <= 4
-    error_message = "Maximum 4 availability zones can be specified."
+    condition     = length(var.availability_zones) == 0 || length(var.availability_zones) >= 2
+    error_message = "Either specify no AZs (auto-discover) or at least 2."
   }
 }
 
