@@ -46,8 +46,8 @@ module "vpc" {
 
   project_name       = var.project_name
   environment        = "staging"
-  vpc_cidr           = "10.1.0.0/16"
-  availability_zones = ["us-east-1a", "us-east-1b"]
+  vpc_cidr           = var.vpc_cidr
+  availability_zones = var.availability_zones
   enable_nat_gateway = true
   enable_flow_logs   = true
 }
@@ -62,7 +62,7 @@ module "alb" {
   public_subnet_ids = module.vpc.public_subnet_ids
 
   enable_alb             = true
-  container_port        = 8080
+  container_port        = var.container_port
   health_check_path     = "/health"
   health_check_matcher  = "200-299"
   certificate_arn       = null
@@ -102,13 +102,13 @@ module "rds" {
   private_subnet_ids      = module.vpc.private_subnet_ids
   allowed_security_groups = [module.ecs.ecs_security_group_id]
 
-  db_name        = "app"
-  db_username    = "postgres"
-  engine_version = "15.4"
-  instance_class = "db.t3.small"
+  db_name        = var.db_name
+  db_username    = var.db_username
+  engine_version = var.db_engine_version
+  instance_class = var.db_instance_class
   multi_az       = false
 
-  backup_retention_period     = 14
+  backup_retention_period     = var.db_backup_retention_period
   enable_performance_insights = true
 
 
@@ -127,11 +127,11 @@ module "ecs" {
 
   container_name  = "app"
   container_image = var.container_image
-  container_port  = 8080
+  container_port  = var.container_port
 
-  task_cpu      = 512
-  task_memory   = 1024
-  desired_count = 2
+  task_cpu      = var.task_cpu
+  task_memory   = var.task_memory
+  desired_count = var.desired_count
 
   environment_variables = [
     { name = "ENVIRONMENT", value = "staging" },
