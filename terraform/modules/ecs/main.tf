@@ -241,10 +241,13 @@ resource "aws_lb" "main" {
   enable_deletion_protection = var.environment == "prod"
   drop_invalid_header_fields = true
 
-  access_logs {
-    bucket  = var.alb_logs_bucket
-    prefix  = "alb/${var.project_name}-${var.environment}"
-    enabled = var.alb_logs_bucket != null
+  dynamic "access_logs" {
+    for_each = var.alb_logs_bucket != null ? [1] : []
+    content {
+      bucket  = var.alb_logs_bucket
+      prefix  = "alb/${var.project_name}-${var.environment}"
+      enabled = true
+    }
   }
 
   tags = var.tags

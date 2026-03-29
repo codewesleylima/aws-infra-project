@@ -53,7 +53,7 @@ for file in "${SENSITIVE_FILES[@]}"; do
   fi
 done
 
-# Escanear por padrões perigosos (exceto docs)
+# Escanear por padrões perigosos (exceto docs e scripts de validação)
 echo "Escaneando por padrões de credenciais..."
 for pattern in "${SENSITIVE_PATTERNS[@]}"; do
   if grep -r "$pattern" . \
@@ -61,7 +61,9 @@ for pattern in "${SENSITIVE_PATTERNS[@]}"; do
     --exclude-dir=node_modules \
     --exclude-dir=build \
     --exclude="*.md" \
-    --exclude="SECURITY_SECRETS.md" \
+    --exclude=SECURITY_SECRETS.md \
+    --exclude=secret-scanner.yml \
+    --exclude=validate-no-secrets.sh \
     2>/dev/null | grep -v ".example" | grep -q .; then
     echo "⚠️  Possível credencial encontrada: $pattern"
     grep -r "$pattern" . \
