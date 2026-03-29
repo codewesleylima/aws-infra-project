@@ -36,7 +36,10 @@ provider "aws" {
   secret_key              = var.aws_secret_key
   skip_credentials_validation = var.use_localstack
   skip_metadata_api_check     = var.use_localstack
-  s3_force_path_style         = true
+
+  s3 {
+    force_path_style = true
+  }
 
   default_tags {
     tags = {
