@@ -239,54 +239,14 @@ jobs:
             })
 
   # ============================================
-  # DEPLOY DEV - Auto deploy on develop branch
+  # PLAN STAGING - Generate plan for staging
   # ============================================
-  deploy-dev:
-    name: Deploy to Dev
+  plan-staging:
+    name: Terraform Plan (Staging)
     runs-on: ubuntu-latest
     needs: [validate, security]
-    if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/develop' && github.event_name == 'push')
-    environment: dev
-    concurrency: 
-      group: deploy-dev
-      cancel-in-progress: false
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-        continue-on-error: true
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-
-      - name: Terraform Init
-        run: terraform init
-        working-directory: terraform/environments/dev
-
-      - name: Terraform Apply
-        run: terraform apply -auto-approve
-        working-directory: terraform/environments/dev
-        continue-on-error: true
-
-  # ============================================
-  # DEPLOY STAGING - Requires approval
-  # ============================================
-  deploy-staging:
-    name: Deploy to Staging
-    runs-on: ubuntu-latest
-    needs: [validate, security]
-    if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/staging' && github.event_name == 'push')
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/staging'
     environment: staging
-    concurrency: 
-      group: deploy-staging
-      cancel-in-progress: false
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -307,23 +267,26 @@ jobs:
         run: terraform init
         working-directory: terraform/environments/staging
 
-      - name: Terraform Apply
-        run: terraform apply -auto-approve
+      - name: Terraform Plan
+        run: terraform plan $TERRAFORM_PLAN_OPTS -out=tfplan
         working-directory: terraform/environments/staging
-        continue-on-error: true
+
+      - name: Upload Terraform plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan-staging
+          path: terraform/environments/staging/tfplan
+          retention-days: 30
 
   # ============================================
-  # DEPLOY PROD - Requires 2 approvals
+  # PLAN PROD - Generate plan for production
   # ============================================
-  deploy-prod:
-    name: Deploy to Production
+  plan-prod:
+    name: Terraform Plan (Production)
     runs-on: ubuntu-latest
     needs: [validate, security]
-    if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && github.event_name == 'push')
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     environment: production
-    concurrency: 
-      group: deploy-production
-      cancel-in-progress: false
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -345,7 +308,138 @@ jobs:
         working-directory: terraform/environments/prod
 
       - name: Terraform Plan
-        run: terraform plan -out=tfplan
+        run: terraform plan $TERRAFORM_PLAN_OPTS -out=tfplan
+        working-directory: terraform/environments/prod
+
+      - name: Upload Terraform plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan-prod
+          path: terraform/environments/prod/tfplan
+          retention-days: 30
+
+  # ============================================
+  # DEPLOY DEV - Auto deploy on develop branch
+  # ============================================
+  deploy-dev:
+    name: Deploy to Dev
+    runs-on: ubuntu-latest
+    needs: [validate, security, plan]
+    if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/develop' && github.event_name == 'push')
+    environment: dev
+    concurrency: 
+      group: deploy-dev
+      cancel-in-progress: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan-dev
+          path: terraform/environments/dev/
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+        continue-on-error: true
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: terraform/environments/dev
+
+      - name: Terraform Apply
+        run: terraform apply tfplan
+        working-directory: terraform/environments/dev
+        continue-on-error: true
+
+  # ============================================
+  # DEPLOY STAGING - Requires approval
+  # ============================================
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [validate, security, plan-staging]
+    if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/staging' && github.event_name == 'push')
+    environment: staging
+    concurrency: 
+      group: deploy-staging
+      cancel-in-progress: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan-staging
+          path: terraform/environments/staging/
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+        continue-on-error: true
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: terraform/environments/staging
+
+      - name: Terraform Apply
+        run: terraform apply tfplan
+        working-directory: terraform/environments/staging
+        continue-on-error: true
+
+  # ============================================
+  # DEPLOY PROD - Requires 2 approvals
+  # ============================================
+  deploy-prod:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [validate, security, plan-prod]
+    if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && github.event_name == 'push')
+    environment: production
+    concurrency: 
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan-prod
+          path: terraform/environments/prod/
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
+          aws-region: ${{ env.AWS_REGION }}
+        continue-on-error: true
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        run: terraform init
         working-directory: terraform/environments/prod
 
       - name: Terraform Apply
