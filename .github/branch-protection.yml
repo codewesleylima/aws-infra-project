@@ -1,0 +1,52 @@
+# ==============================================
+# Branch Protection Rules
+# ==============================================
+# Configure in: GitHub > Settings > Branches > Add rule
+
+## main branch (Production)
+branch_name_pattern: main
+rules:
+  - require_pull_request_reviews:
+      required_approving_review_count: 2
+      dismiss_stale_reviews: true
+      require_code_owner_reviews: true
+      require_last_push_approval: true
+  - require_status_checks:
+      strict: true
+      contexts:
+        - "Validate Terraform"
+        - "Security Scan"
+        - "SAST Scan"
+  - require_conversation_resolution: true
+  - require_signed_commits: true
+  - require_linear_history: true
+  - include_administrators: true
+  - restrict_pushes:
+      allow_force_pushes: false
+      allow_deletions: false
+
+## staging branch
+branch_name_pattern: staging
+rules:
+  - require_pull_request_reviews:
+      required_approving_review_count: 1
+      dismiss_stale_reviews: true
+  - require_status_checks:
+      strict: true
+      contexts:
+        - "Validate Terraform"
+        - "Security Scan"
+  - require_conversation_resolution: true
+  - restrict_pushes:
+      allow_force_pushes: false
+      allow_deletions: false
+
+## develop branch
+branch_name_pattern: develop
+rules:
+  - require_status_checks:
+      strict: true
+      contexts:
+        - "Validate Terraform"
+  - restrict_pushes:
+      allow_force_pushes: false

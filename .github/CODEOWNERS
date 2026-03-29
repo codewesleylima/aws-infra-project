@@ -1,0 +1,26 @@
+# ==============================================
+# CODEOWNERS
+# ==============================================
+# These owners will be automatically requested for review
+# when someone opens a pull request.
+
+# Default owners for everything
+*                       @codewesleylima
+
+# Terraform infrastructure
+/terraform/             @codewesleylima
+/terraform/modules/     @codewesleylima
+/terraform/environments/prod/  @codewesleylima
+
+# CI/CD and GitHub configurations
+/.github/               @codewesleylima
+/.github/workflows/     @codewesleylima
+
+# Documentation
+*.md                    @codewesleylima
+/docs/                  @codewesleylima
+
+# Security-sensitive files
+/terraform/modules/iam/     @codewesleylima
+/terraform/modules/secrets/ @codewesleylima
+SECURITY.md                 @codewesleylima
