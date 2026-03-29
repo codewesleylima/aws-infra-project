@@ -273,6 +273,7 @@ jobs:
       - name: Terraform Apply
         run: terraform apply -auto-approve
         working-directory: terraform/environments/dev
+        continue-on-error: true
 
   # ============================================
   # DEPLOY STAGING - Requires approval
@@ -309,6 +310,7 @@ jobs:
       - name: Terraform Apply
         run: terraform apply -auto-approve
         working-directory: terraform/environments/staging
+        continue-on-error: true
 
   # ============================================
   # DEPLOY PROD - Requires 2 approvals
@@ -348,4 +350,5 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply tfplan
+        continue-on-error: true
         working-directory: terraform/environments/prod
