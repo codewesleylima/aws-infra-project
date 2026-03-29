@@ -82,15 +82,37 @@ module "vpc" {
 }
 
 # ----------------------------------------------
+# Security Groups - Centralized management
+# ----------------------------------------------
+module "security_groups" {
+  source = "../../modules/security_groups"
+
+  project_name            = var.project_name
+  environment             = "prod"
+  vpc_id                  = module.vpc.vpc_id
+  vpc_cidr                = var.vpc_cidr
+  container_port          = var.container_port
+  alb_ingress_cidr_blocks = var.alb_ingress_cidr_blocks
+  enable_vpc_endpoints_sg = true
+
+  tags = {
+    Name = "${var.project_name}-sgs-prod"
+  }
+
+  depends_on = [module.vpc]
+}
+
+# ----------------------------------------------
 # ALB - Production
 # ----------------------------------------------
 module "alb" {
   source = "../../modules/alb"
 
-  project_name      = var.project_name
-  environment       = "prod"
-  vpc_id            = module.vpc.vpc_id
-  public_subnet_ids = module.vpc.public_subnet_ids
+  project_name       = var.project_name
+  environment        = "prod"
+  vpc_id             = module.vpc.vpc_id
+  public_subnet_ids  = module.vpc.public_subnet_ids
+  alb_security_group_id = module.security_groups.alb_security_group_id
 
   enable_alb             = true
   container_port        = var.container_port
@@ -99,7 +121,7 @@ module "alb" {
   certificate_arn       = null
   alb_logs_bucket       = aws_s3_bucket.alb_logs.id
 
-  depends_on = [module.vpc, aws_s3_bucket.alb_logs]
+  depends_on = [module.vpc, module.security_groups, aws_s3_bucket.alb_logs]
 }
 
 # ----------------------------------------------
@@ -228,7 +250,7 @@ module "rds" {
   environment             = "prod"
   vpc_id                  = module.vpc.vpc_id
   private_subnet_ids      = module.vpc.private_subnet_ids
-  allowed_security_groups = [module.ecs.ecs_security_group_id]
+  allowed_security_groups = [module.security_groups.rds_security_group_id]
 
   db_name        = var.db_name
   db_username    = var.db_username
@@ -244,7 +266,7 @@ module "rds" {
   monitoring_interval         = 30
   kms_key_arn                 = module.kms.key_arn
 
-  depends_on = [module.vpc, module.kms]
+  depends_on = [module.vpc, module.kms, module.security_groups]
 }
 
 # ----------------------------------------------
@@ -286,7 +308,7 @@ module "ecs" {
   ]
 
   alb_target_group_arn   = module.alb.target_group_arn
-  alb_security_group_id  = module.alb.alb_security_group_id
+  alb_security_group_id  = module.security_groups.ecs_security_group_id
   enable_autoscaling     = true
   min_capacity           = 3
   max_capacity           = 20
@@ -295,5 +317,5 @@ module "ecs" {
   enable_container_insights = true
   enable_execute_command    = false
 
-  depends_on = [module.vpc, module.alb]
+  depends_on = [module.vpc, module.alb, module.security_groups]
 }

@@ -100,3 +100,17 @@ variable "db_backup_retention_period" {
   type        = number
   default     = 30
 }
+
+# Security Groups Configuration
+variable "alb_ingress_cidr_blocks" {
+  description = "CIDR blocks allowed to access the ALB"
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+
+  validation {
+    condition = alltrue([
+      for cidr in var.alb_ingress_cidr_blocks : can(cidrhost(cidr, 0))
+    ])
+    error_message = "All ALB ingress CIDR blocks must be valid CIDR notation."
+  }
+}
