@@ -77,9 +77,9 @@ module "alb" {
   health_check_path     = "/health"
   health_check_matcher  = "200-299"
   certificate_arn       = null
-  alb_logs_bucket       = null
+  alb_logs_bucket       = aws_s3_bucket.alb_logs.id
 
-  depends_on = [module.vpc]
+  depends_on = [module.vpc, aws_s3_bucket.alb_logs]
 }
 
 # ----------------------------------------------
@@ -99,6 +99,74 @@ module "cloudtrail" {
 
   depends_on = [module.vpc]
 }
+
+# ----------------------------------------------
+# S3 - ALB Access Logs
+# ----------------------------------------------
+# Get the ELB service account ID for the region
+data "aws_elb_service_account" "main" {}
+
+resource "aws_s3_bucket" "alb_logs" {
+  bucket = "${var.project_name}-alb-logs-${data.aws_caller_identity.current.account_id}-${var.environment}"
+
+  tags = {
+    Name = "${var.project_name}-alb-logs-${var.environment}"
+  }
+}
+
+resource "aws_s3_bucket_versioning" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_policy" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          AWS = data.aws_elb_service_account.main.arn
+        }
+        Action   = "s3:PutObject"
+        Resource = "${aws_s3_bucket.alb_logs.arn}/*"
+      }
+    ]
+  })
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  rule {
+    id     = "delete-old-logs"
+    status = "Enabled"
+
+    expiration {
+      days = 30
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 7
+    }
+  }
+}
+
+data "aws_caller_identity" "current" {}
 
 # ----------------------------------------------
 # S3 - Production with replication ready
