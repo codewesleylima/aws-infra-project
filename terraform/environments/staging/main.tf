@@ -36,15 +36,7 @@ provider "aws" {
       Repository  = "aws-infra-project"
     }
   }
-}
-
-locals {
-  common_tags = {
-    Environment = "staging"
-    Project     = var.project_name
-    ManagedBy   = "Terraform"
-  }
-}
+# All resources automatically tagged via provider.default_tags
 
 # VPC
 module "vpc" {
@@ -56,8 +48,6 @@ module "vpc" {
   availability_zones = ["us-east-1a", "us-east-1b"]
   enable_nat_gateway = true
   enable_flow_logs   = true
-
-  tags = local.common_tags
 }
 
 # S3
@@ -70,7 +60,15 @@ module "s3_storage" {
   enable_versioning = true
   enforce_ssl       = true
 
-  tags = local.common_tags
+  lifecycle_rules = [
+    {
+      id                                 = "archive-old-objects"
+      prefix                             = "archive/"
+      transition_days                    = 90
+      transition_storage_class           = "GLACIER"
+      noncurrent_version_expiration_days = 30
+    }
+  ]
 }
 
 # RDS
@@ -92,7 +90,6 @@ module "rds" {
   backup_retention_period     = 14
   enable_performance_insights = true
 
-  tags = local.common_tags
 
   depends_on = [module.vpc]
 }
@@ -132,8 +129,6 @@ module "ecs" {
   enable_autoscaling = true
   min_capacity       = 2
   max_capacity       = 10
-
-  tags = local.common_tags
 
   depends_on = [module.vpc]
 }

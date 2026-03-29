@@ -60,16 +60,7 @@ provider "aws" {
   }
 }
 
-# ----------------------------------------------
-# Local Variables
-# ----------------------------------------------
-locals {
-  common_tags = {
-    Environment = var.environment
-    Project     = var.project_name
-    ManagedBy   = "Terraform"
-  }
-}
+# All resources automatically tagged via provider.default_tags
 
 # ----------------------------------------------
 # VPC Module
@@ -83,8 +74,6 @@ module "vpc" {
   availability_zones = var.availability_zones
   enable_nat_gateway = var.enable_nat_gateway
   enable_flow_logs   = true
-
-  tags = local.common_tags
 }
 
 # ----------------------------------------------
@@ -108,8 +97,6 @@ module "s3_storage" {
       noncurrent_version_expiration_days = 30
     }
   ]
-
-  tags = local.common_tags
 }
 
 # ----------------------------------------------
@@ -133,8 +120,6 @@ module "rds" {
   backup_retention_period     = 7
   enable_performance_insights = true
   monitoring_interval         = 60
-
-  tags = local.common_tags
 
   depends_on = [module.vpc]
 }
@@ -178,8 +163,6 @@ module "ecs" {
   min_capacity              = 1
   max_capacity              = 5
   enable_container_insights = true
-
-  tags = local.common_tags
 
   depends_on = [module.vpc]
 }

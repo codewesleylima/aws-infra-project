@@ -41,10 +41,8 @@ provider "aws" {
 }
 
 locals {
-  common_tags = {
-    Environment = "prod"
-    Project     = var.project_name
-    ManagedBy   = "Terraform"
+  # Custom tags added to provider default_tags
+  custom_tags = {
     CostCenter  = "production"
   }
 }
@@ -61,8 +59,6 @@ module "vpc" {
   availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
   enable_nat_gateway = true
   enable_flow_logs   = true
-
-  tags = local.common_tags
 }
 
 # ----------------------------------------------
@@ -122,7 +118,6 @@ module "rds" {
   enable_performance_insights = true
   monitoring_interval         = 30
 
-  tags = local.common_tags
 
   depends_on = [module.vpc]
 }
@@ -174,8 +169,6 @@ module "ecs" {
 
   enable_container_insights = true
   enable_execute_command    = false
-
-  tags = local.common_tags
 
   depends_on = [module.vpc]
 }
