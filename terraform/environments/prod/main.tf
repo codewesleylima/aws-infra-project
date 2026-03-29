@@ -48,6 +48,26 @@ locals {
 }
 
 # ----------------------------------------------
+# KMS - Production encryption key with rotation
+# ----------------------------------------------
+module "kms" {
+  source = "../../modules/kms"
+
+  project_name            = var.project_name
+  environment             = "prod"
+  enable_key_rotation     = true
+  rotation_period_in_days = 365
+  deletion_window_in_days = 30
+  multi_region            = false
+  enable_usage_alarms     = true
+  alarm_actions           = []
+
+  tags = {
+    Name = "${var.project_name}-kms-prod"
+  }
+}
+
+# ----------------------------------------------
 # VPC - Production with 3 AZs
 # ----------------------------------------------
 module "vpc" {
@@ -222,9 +242,9 @@ module "rds" {
   backup_retention_period     = var.db_backup_retention_period
   enable_performance_insights = true
   monitoring_interval         = 30
+  kms_key_arn                 = module.kms.key_arn
 
-
-  depends_on = [module.vpc]
+  depends_on = [module.vpc, module.kms]
 }
 
 # ----------------------------------------------
