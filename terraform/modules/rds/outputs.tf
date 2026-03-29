@@ -43,12 +43,8 @@ output "db_security_group_id" {
   value       = aws_security_group.rds.id
 }
 
-output "db_credentials_secret_arn" {
-  description = "ARN do secret com credenciais"
-  value       = aws_secretsmanager_secret.db_credentials.arn
-}
-
-output "db_credentials_secret_name" {
-  description = "Nome do secret com credenciais"
-  value       = aws_secretsmanager_secret.db_credentials.name
+output "db_master_password" {
+  description = "Master password for RDS (store in modules/secrets)"
+  value       = random_password.master.result
+  sensitive   = true
 }

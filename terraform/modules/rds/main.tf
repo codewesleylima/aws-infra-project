@@ -18,35 +18,13 @@ terraform {
 
 # ----------------------------------------------
 # Random Password
+# NOTE: This password is used for RDS master user.
+# Store credentials in modules/secrets for application access.
 # ----------------------------------------------
 resource "random_password" "master" {
   length           = 32
   special          = true
   override_special = "!#$%&*()-_=+[]{}<>:?"
-}
-
-# ----------------------------------------------
-# Secrets Manager
-# ----------------------------------------------
-resource "aws_secretsmanager_secret" "db_credentials" {
-  name                    = "${var.project_name}/${var.environment}/rds/credentials"
-  description             = "RDS PostgreSQL credentials"
-  recovery_window_in_days = var.environment == "prod" ? 30 : 0
-  kms_key_id              = var.kms_key_arn
-
-  tags = var.tags
-}
-
-resource "aws_secretsmanager_secret_version" "db_credentials" {
-  secret_id = aws_secretsmanager_secret.db_credentials.id
-  secret_string = jsonencode({
-    username = var.db_username
-    password = random_password.master.result
-    host     = aws_db_instance.main.address
-    port     = aws_db_instance.main.port
-    dbname   = var.db_name
-    engine   = "postgresql"
-  })
 }
 
 # ----------------------------------------------

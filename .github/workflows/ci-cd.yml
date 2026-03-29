@@ -94,12 +94,26 @@ jobs:
 
       - name: Wait for LocalStack
         run: |
-          for i in {1..30}; do
-            echo "Waiting for LocalStack ($i/30)..."
-            if curl -s http://localhost:4566/health | grep -q '"running"'; then
-              echo "LocalStack is running"; break
+          # Exponential backoff: 1s, 2s, 4s, 8s, 16s, 32s (max 10 retries)
+          attempt=0
+          max_attempts=10
+          backoff=1
+          while [ $attempt -lt $max_attempts ]; do
+            attempt=$((attempt + 1))
+            echo "Waiting for LocalStack (attempt $attempt/$max_attempts, backoff ${backoff}s)..."
+            if curl -m 3 -s http://localhost:4566/health | grep -q '"running"'; then
+              echo "✅ LocalStack is running"
+              break
             fi
-            sleep 5
+            if [ $attempt -lt $max_attempts ]; then
+              sleep $backoff
+              # Double backoff but cap at 32 seconds
+              backoff=$((backoff * 2))
+              [ $backoff -gt 32 ] && backoff=32
+            else
+              echo "❌ LocalStack failed to start after $max_attempts attempts"
+              exit 1
+            fi
           done
 
       - name: Setup Terraform

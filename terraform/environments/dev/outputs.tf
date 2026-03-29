@@ -36,14 +36,15 @@ output "alb_dns_name" {
 
 # RDS
 output "rds_endpoint" {
-  description = "Endpoint do RDS"
+  description = "Endpoint do RDS para conexão direta"
   value       = module.rds.db_endpoint
   sensitive   = true
 }
 
-output "rds_credentials_secret_arn" {
-  description = "ARN do secret com credenciais do RDS"
-  value       = module.rds.db_credentials_secret_arn
+output "rds_master_password" {
+  description = "Master password for RDS (store in modules/secrets for application access)"
+  value       = module.rds.db_master_password
+  sensitive   = true
 }
 
 # S3

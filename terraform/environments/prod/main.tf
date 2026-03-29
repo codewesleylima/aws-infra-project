@@ -300,12 +300,15 @@ module "ecs" {
     }
   ]
 
-  secrets = [
-    {
-      name       = "DATABASE_URL"
-      value_from = module.rds.db_credentials_secret_arn
-    }
-  ]
+  # Secrets should be created via modules/secrets and injected into ECS task definition
+  # Database credentials example:
+  # secrets = [
+  #   {
+  #     name       = "DATABASE_URL"
+  #     value_from = module.secrets.secret_arns["db-credentials"]
+  #   }
+  # ]
+  secrets = []
 
   alb_target_group_arn   = module.alb.target_group_arn
   alb_security_group_id  = module.security_groups.ecs_security_group_id
