@@ -319,3 +319,26 @@ module "ecs" {
 
   depends_on = [module.vpc, module.alb, module.security_groups]
 }
+
+# ----------------------------------------------
+# CloudWatch - Monitoring and Dashboards
+# ----------------------------------------------
+module "cloudwatch" {
+  source = "../../modules/cloudwatch"
+
+  project_name   = var.project_name
+  environment    = "prod"
+  aws_region     = var.aws_region
+  cluster_name   = module.ecs.cluster_name
+  service_name   = module.ecs.service_name
+  db_instance_id = module.rds.db_instance_id
+  
+  log_retention_days = 30
+  sns_topic_arn      = ""  # Optional: provide SNS topic for alarms
+
+  tags = {
+    Name = "${var.project_name}-cloudwatch-prod"
+  }
+
+  depends_on = [module.ecs, module.rds]
+}
