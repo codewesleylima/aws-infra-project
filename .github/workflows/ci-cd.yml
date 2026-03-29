@@ -74,7 +74,8 @@ jobs:
     needs: validate
     services:
       localstack:
-        image: localstack/localstack:latest
+        # Use LocalStack community version so auth token is not required in CI
+        image: localstack/localstack:0.14.4
         options: >
           --health-cmd "curl -f http://localhost:4566/health || exit 1"
           --health-interval 10s
@@ -85,6 +86,7 @@ jobs:
         env:
           SERVICES: "s3,ec2,ecs,rds,iam,secretsmanager,cloudwatch"
           DEBUG: 0
+          LOCALSTACK_ACKNOWLEDGE_ACCOUNT_REQUIREMENT: 1
 
     steps:
       - name: Checkout code
@@ -171,6 +173,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure AWS Credentials
+        if: ${{ secrets.AWS_ROLE_ARN != '' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
@@ -252,6 +255,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure AWS Credentials
+        if: ${{ secrets.AWS_ROLE_ARN != '' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
@@ -287,6 +291,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure AWS Credentials
+        if: ${{ secrets.AWS_ROLE_ARN_STAGING != '' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
@@ -322,6 +327,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure AWS Credentials
+        if: ${{ secrets.AWS_ROLE_ARN_PROD != '' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
