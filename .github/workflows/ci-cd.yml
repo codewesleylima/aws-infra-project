@@ -49,6 +49,10 @@ jobs:
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
+      - name: Terraform Format (auto)
+        run: terraform fmt -recursive
+        working-directory: terraform
+
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
         working-directory: terraform
