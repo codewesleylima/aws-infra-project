@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # ============================================
   # Build and Test Spring Boot Application
@@ -29,12 +27,11 @@ services:
       - .:/repo
     environment:
       GITLEAKS_CONFIG: /repo/.gitleaks.toml
+    entrypoint: ["sh", "-c"]
     command: >
-      sh -c "
-        echo '🔐 Running Gitleaks...'
-        gitleaks detect --config /repo/.gitleaks.toml --verbose &&
-        echo '✅ Gitleaks passed'
-      "
+      echo '🔐 Running Gitleaks...'
+      gitleaks detect --config /repo/.gitleaks.toml --verbose &&
+      echo '✅ Gitleaks passed'
 
   # ============================================
   # TruffleHog - Additional secret detection
@@ -45,12 +42,11 @@ services:
     working_dir: /repo
     volumes:
       - .:/repo
+    entrypoint: ["sh", "-c"]
     command: >
-      sh -c "
-        echo '🔐 Running TruffleHog...'
-        cd /repo && trufflehog filesystem . --only-verified --json &&
-        echo '✅ TruffleHog passed'
-      "
+      echo '🔐 Running TruffleHog...'
+      trufflehog filesystem /repo --only-verified --json &&
+      echo '✅ TruffleHog passed'
 
   # ============================================
   # TFSec - Terraform security scanning
@@ -61,28 +57,26 @@ services:
     working_dir: /repo
     volumes:
       - .:/repo
+    entrypoint: ["sh", "-c"]
     command: >
-      sh -c "
-        echo '🔒 Running TFSec on Terraform...'
-        tfsec /repo/infra --format sarif --out /tmp/tfsec-results.sarif || true &&
-        echo '✅ TFSec completed'
-      "
+      echo '🔒 Running TFSec on Terraform...'
+      tfsec /repo/infra --format sarif --out /tmp/tfsec-results.sarif || true &&
+      echo '✅ TFSec completed'
 
   # ============================================
   # Trivy - Vulnerability scanning
   # ============================================
   trivy:
-    image: aquasec/trivy:latest
+    image: ghcr.io/aquasecurity/trivy:latest
     container_name: ci-trivy
     working_dir: /repo
     volumes:
       - .:/repo
+    entrypoint: ["sh", "-c"]
     command: >
-      sh -c "
-        echo '🔍 Running Trivy vulnerability scan...'
-        trivy config /repo/infra --severity CRITICAL,HIGH --format sarif &&
-        echo '✅ Trivy scan completed'
-      "
+      echo '🔍 Running Trivy vulnerability scan...'
+      trivy config /repo/infra --severity CRITICAL,HIGH --format sarif &&
+      echo '✅ Trivy scan completed'
 
   # ============================================
   # Docker Build - Build container image
