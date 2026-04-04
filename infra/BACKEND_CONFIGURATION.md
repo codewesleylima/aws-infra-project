@@ -99,10 +99,10 @@ locals {
 # encrypt        = true
 # dynamodb_table = "terraform-state-lock"
 
-# Configuration for Staging Environment
-# backend.staging.tfbackend:
+# Configuration for Hom Environment
+# backend.hom.tfbackend:
 # bucket         = "your-terraform-state-bucket"
-# key            = "aws-infra/staging/terraform.tfstate"
+# key            = "aws-infra/hom/terraform.tfstate"
 # region         = "us-east-1"
 # encrypt        = true
 # dynamodb_table = "terraform-state-lock"
@@ -117,5 +117,5 @@ locals {
 
 # Usage:
 # terraform init -backend-config=backend.dev.tfbackend
-# terraform init -backend-config=backend.staging.tfbackend
+# terraform init -backend-config=backend.hom.tfbackend
 # terraform init -backend-config=backend.prod.tfbackend
