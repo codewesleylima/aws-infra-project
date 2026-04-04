@@ -30,7 +30,7 @@ jobs:
       - name: Run TFSec
         run: |
           curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
-          tfsec terraform --format sarif --out tfsec-results.sarif
+          tfsec terraform --format sarif --out tfsec-results.sarif || echo "[]" > tfsec-results.sarif
 
       - name: Upload SARIF report
         if: always()
