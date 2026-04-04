@@ -138,7 +138,7 @@ variable "maintenance_window" {
   type        = string
   default     = "Mon:04:00-Mon:05:00"
   validation {
-    condition     = can(regex("^(Mon|Tue|Wed|Thu|Fri|Sat|Sun):[0-2][0-3]:[0-5][0-9]-(Mon|Tue|Wed|Thu|Fri|Sat|Sun):[0-2][0-3]:[0-5][0-9]$", var.maintenance_window))
+    condition     = can(regex("^(Mon|Tue|Wed|Thu|Fri|Sat|Sun):([01][0-9]|2[0-3]):[0-5][0-9]-(Mon|Tue|Wed|Thu|Fri|Sat|Sun):([01][0-9]|2[0-3]):[0-5][0-9]$", var.maintenance_window))
     error_message = "Maintenance window must be in DDD:HH:MM-DDD:HH:MM format."
   }
 }
