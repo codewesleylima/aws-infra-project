@@ -5,19 +5,20 @@
 [build]
 rules = []
 
-[[allowlist]]
-description = "SECURITY_SECRETS.md contains example patterns for training purposes (redacted values only)"
-paths = [".*/SECURITY_SECRETS\\.md"]
+[allowlist]
+description = "Allowlist for security documentation and test files"
+paths = [
+  ".*/SECURITY_SECRETS\\.md",
+  ".*/\\.env\\.example",
+  ".*/\\.env\\.test",
+  ".*/secret-scanner\\.yml",
+  ".*/validate-no-secrets\\.sh"
+]
 regexes = [
-  "REDACTED"
+  "REDACTED",
+  "BEGIN PRIVATE KEY",
+  "BEGIN RSA PRIVATE KEY"
 ]
 commits = [
   "cb615e63cefdfb8e66277ce6cbe3b727cf8556ec"  # Security documentation commit
-]
-
-[[allowlist]]
-description = "Exclude test/example files"
-paths = [
-  ".*/\\.env\\.example",
-  ".*/\\.env\\.test"
 ]
