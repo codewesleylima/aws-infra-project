@@ -191,7 +191,6 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-        continue-on-error: true
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -206,7 +205,6 @@ jobs:
         id: plan
         run: |
           set -euo pipefail
-          terraform init $TERRAFORM_INIT_OPTS
           terraform plan $TERRAFORM_PLAN_OPTS -out=tfplan 2>&1 | tee plan.txt
           tail -n +1 plan.txt | head -n 500 > plan_short.txt
           echo "plan<<EOF" >> $GITHUB_OUTPUT
@@ -270,7 +268,6 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
           aws-region: ${{ env.AWS_REGION }}
-        continue-on-error: true
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -310,7 +307,6 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
           aws-region: ${{ env.AWS_REGION }}
-        continue-on-error: true
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -359,7 +355,6 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-        continue-on-error: true
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -373,7 +368,6 @@ jobs:
       - name: Terraform Apply
         run: terraform apply tfplan
         working-directory: terraform/environments/dev
-        continue-on-error: true
 
   # ============================================
   # DEPLOY STAGING - Requires approval
@@ -402,7 +396,6 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
           aws-region: ${{ env.AWS_REGION }}
-        continue-on-error: true
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -416,7 +409,6 @@ jobs:
       - name: Terraform Apply
         run: terraform apply tfplan
         working-directory: terraform/environments/staging
-        continue-on-error: true
 
   # ============================================
   # DEPLOY PROD - Requires 2 approvals
@@ -445,7 +437,6 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
           aws-region: ${{ env.AWS_REGION }}
-        continue-on-error: true
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -458,5 +449,4 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply tfplan
-        continue-on-error: true
         working-directory: terraform/environments/prod

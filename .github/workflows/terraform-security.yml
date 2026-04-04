@@ -2,16 +2,15 @@ name: Terraform Security Scan
 
 on:
   pull_request:
-    paths:
-      - 'terraform/**'
-      - '.github/workflows/terraform-security.yml'
+    branches:
+      - develop
+      - staging
+      - main
   push:
     branches:
       - develop
       - staging
       - main
-    paths:
-      - 'terraform/**'
 
 permissions:
   contents: read
@@ -31,7 +30,7 @@ jobs:
       - name: Run TFSec
         run: |
           curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
-          tfsec terraform --format sarif --out tfsec-results.sarif || true
+          tfsec terraform --format sarif --out tfsec-results.sarif
 
       - name: Upload SARIF report
         if: always()
@@ -59,6 +58,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Upload Trivy results to GitHub
+        if: always()
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-results.sarif
@@ -74,7 +74,7 @@ jobs:
 
       - name: Run Checkov
         id: checkov
-        uses: bridgecrewio/checkov-action@master
+        uses: bridgecrewio/checkov-action@v12
         with:
           directory: terraform
           framework: terraform
@@ -82,9 +82,9 @@ jobs:
           soft_fail: false
           output_format: sarif
           output_file_path: 'checkov-results.sarif'
-        continue-on-error: true
 
       - name: Upload Checkov results
+        if: always()
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: checkov-results.sarif
@@ -121,13 +121,11 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
         env:
           GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
-        continue-on-error: true
 
       - name: Detect secrets with Gitleaks
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
 
   compliance:
     name: Compliance Checks
