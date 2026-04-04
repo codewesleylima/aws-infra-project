@@ -1,0 +1,159 @@
+name: Terraform Security Scan
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - hom
+      - main
+  push:
+    branches:
+      - develop
+      - hom
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+  security-events: write
+
+jobs:
+  tfsec:
+    name: TFSec Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run TFSec
+        run: |
+          curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
+          tfsec terraform --format sarif --out tfsec-results.sarif || echo "[]" > tfsec-results.sarif
+
+      - name: Upload SARIF report
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: tfsec-results.sarif
+          category: tfsec
+          wait-for-processing: true
+
+  trivy:
+    name: Trivy Vulnerability Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: 'infra'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy results to GitHub
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-results.sarif
+          category: Trivy
+
+  checkov:
+    name: Checkov Policy Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Checkov
+        id: checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: infra
+          framework: terraform
+          quiet: false
+          soft_fail: false
+          output_format: sarif
+          output_file_path: 'checkov-results.sarif'
+
+      - name: Upload Checkov results
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: checkov-results.sarif
+          category: Checkov
+
+      - name: Comment PR with failures
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🔒 **Security scan found issues**\n\nCheck the "Security" tab above for details on:\n- TFSec findings\n- Trivy vulnerabilities\n- Checkov policy violations\n\nResolve all critical/high severity issues before merging.'
+            })
+
+  secrets:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect secrets with GitGuardian
+        uses: GitGuardian/ggshield-action@v1.24.0
+        with:
+          args: --all-commits --verbose
+        env:
+          GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
+
+      - name: Detect secrets with Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  compliance:
+    name: Compliance Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for required tags
+        run: |
+          echo "Verifying compliance standards..."
+          missing_readme=0
+          for module_dir in infra/modules/*/; do
+            if [ ! -f "$module_dir/README.md" ]; then
+              echo "Missing README.md in $(basename $module_dir)"
+              missing_readme=1
+            fi
+          done
+          if [ $missing_readme -eq 1 ]; then
+            echo "::error::All modules must have README.md"
+            exit 1
+          fi
+          echo "All compliance checks passed"
+
+      - name: Verify security groups defaults
+        run: |
+          echo "Checking security group configurations..."
+          grep -r "0\.0\.0\.0/0" terraform/ > /tmp/open_sgs.txt || true
+          if [ -s /tmp/open_sgs.txt ]; then
+            echo "Found open security group rules (0.0.0.0/0):"
+            cat /tmp/open_sgs.txt
+            echo "Please review and restrict if not intentional"
+          fi

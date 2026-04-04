@@ -1,0 +1,62 @@
+# Production Environment Configuration
+# Copy this to terraform/environments/prod/terraform.tfvars
+# Production is for maximum reliability, security, and performance
+
+aws_region   = "us-east-1"
+project_name = "myapp"
+environment  = "prod"
+
+# ALWAYS use specific versions in production - never latest
+# Use semantic versioning: vX.Y.Z
+container_image = "myapp:v1.2.3"
+container_port  = 8080
+
+# Production-scale resources with redundancy
+ecs_desired_count = 3              # Minimum for HA
+ecs_task_cpu      = "1024"         # 1 vCPU per task
+ecs_task_memory   = "2048"         # 2GB per task
+
+# Production database - dedicated RAM for performance
+rds_instance_class      = "db.r6g.large"
+rds_allocated_storage   = 100
+rds_max_allocated_storage = 500    # Enable autoscaling
+rds_multi_az           = true      # Critical for HA
+
+# Long backup retention for disaster recovery
+rds_backup_retention = 30
+
+# Full redundancy in networking
+enable_nat_gateway = true
+nat_gateway_count  = 3             # One per AZ
+
+# Full monitoring and observability
+enable_monitoring = true
+enable_detailed_monitoring = true
+cloudwatch_log_retention_days = 30
+
+# Production database is never publicly accessible
+allow_public_database_access = false
+
+# Cost allocation tags with detailed tracking
+cost_allocation_tags = {
+  Environment = "production"
+  CostCenter  = "business-unit"
+  Managed     = "terraform"
+  Team        = "platform"
+}
+
+# Restricted access - only from approved networks
+# Update with your actual office/VPN IPs
+alb_ingress_cidr_blocks = [
+  "203.0.113.0/24"       # Replace with your office IP
+]
+
+# Enable autoscaling for production traffic variations
+enable_autoscaling = true
+autoscale_min_count = 3
+autoscale_max_count = 20
+autoscale_target_cpu = 70
+
+# Enable read replicas for read scaling
+enable_read_replica = true
+read_replica_count = 2

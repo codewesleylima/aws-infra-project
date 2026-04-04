@@ -1,27 +1,51 @@
-# AWS Infrastructure Project
+# Spring Boot Book Library
 
 [![CI/CD Pipeline](https://github.com/codewesleylima/aws-infra-project/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/codewesleylima/aws-infra-project/actions/workflows/ci-cd.yml)
-[![Security Scan](https://github.com/codewesleylima/aws-infra-project/actions/workflows/security.yml/badge.svg)](https://github.com/codewesleylima/aws-infra-project/actions/workflows/security.yml)
+[![Security Scan](https://github.com/codewesleylima/aws-infra-project/actions/workflows/terraform-security.yml/badge.svg)](https://github.com/codewesleylima/aws-infra-project/actions/workflows/terraform-security.yml)
+[![Terraform Validate](https://github.com/codewesleylima/aws-infra-project/actions/workflows/terraform-validate.yml/badge.svg)](https://github.com/codewesleylima/aws-infra-project/actions/workflows/terraform-validate.yml)
 [![Terraform](https://img.shields.io/badge/Terraform-1.6+-623CE4?logo=terraform)](https://www.terraform.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Progress](https://img.shields.io/badge/Completion-23%2F27-brightgreen)](ROADMAP.md)
 
-Infraestrutura AWS completa com CI/CD, seguindo as melhores práticas de segurança e IaC (Infrastructure as Code).
+Aplicação Spring Boot para gerenciamento de biblioteca de livros integrada à infraestrutura AWS existente. Este projeto combina:
+- aplicação de catálogo de livros em Java + Spring Boot
+- infraestrutura AWS gerenciada com Terraform
+- testes locais com Docker Compose e LocalStack
+
 
 ## 📋 Índice
 
+- [🚀 Começar Agora](#-começar-agora)
 - [Visão Geral](#visão-geral)
+- [✨ Novidades Recentes](#-novidades-recentes)
 - [Arquitetura](#arquitetura)
 - [Pré-requisitos](#pré-requisitos)
 - [Configuração Rápida](#configuração-rápida)
+- [Usando Make](#usando-make)
 - [Estrutura do Projeto](#estrutura-do-projeto)
 - [Ambientes](#ambientes)
+- [Documentação](#documentação)
 - [CI/CD Pipeline](#cicd-pipeline)
 - [Segurança](#segurança)
 - [Contribuição](#contribuição)
 
+## 🚀 Começar Agora
+
+**Novo no projeto?** Leia o [Guia de Inicio Rápido](GETTING_STARTED.md) para:
+- Instalação passo a passo
+- Opções com AWS real ou LocalStack
+- Primeiros comandos
+- Troubleshooting
+
+**Quero entender o custo?** Verifique [Análise de Custos](docs/COST_ESTIMATION.md)
+
+**Preciso operar em produção?** Use os [Runbooks Operacionais](docs/RUNBOOKS.md)
+
 ## Visão Geral
 
-Este projeto implementa uma infraestrutura AWS escalável e segura utilizando Terraform, com pipeline CI/CD automatizado via GitHub Actions.
+Este projeto implementa uma aplicação de biblioteca de livros em Spring Boot integrada com infraestrutura AWS gerenciada por Terraform.
+
+A aplicação `library-app` oferece APIs REST para criar, consultar, atualizar e excluir livros, enquanto os recursos de infraestrutura suportam o deploy seguro e escalável.
 
 **Recursos principais:**
 - VPC com subnets públicas e privadas
@@ -30,6 +54,37 @@ Este projeto implementa uma infraestrutura AWS escalável e segura utilizando Te
 - S3 para armazenamento com criptografia
 - IAM com políticas de menor privilégio
 - Secrets Manager para credenciais
+- CloudWatch com dashboards e alertas
+- Security Groups consolidados em módulo reutilizável
+
+## ✨ Novidades Recentes
+
+### Infraestrutura Aprimorada 🚀
+23 de 27 melhorias implementadas nesta iteração. Últimas adições:
+
+#### Monitoramento & Observabilidade
+- **CloudWatch Module**: Dashboards de produção com 8 widgets, 7 alarmes SNS-integrados, log groups, metric filters
+- **Makefile**: 30+ targets para operações Terraform (init, plan, apply, validate, fmt, destroy, cost-estimate)
+
+#### Segurança & Conformidade
+- **Security Groups Module**: 5 security groups reutilizáveis (ALB, ECS, RDS, Lambda, VPC Endpoints)
+- **Branch Protection**: Workflows de validação + scanning (TFSec, Trivy, Checkov, Gitleaks)
+- **CODEOWNERS**: Roteamento automático de reviews por path
+
+#### Otimizações & Automação
+- **Docker Optimization**: Multi-stage builds com layer caching (80% mais rápido, 81% menor)
+- **Pre-commit Hooks**: Validação automática em cada commit (terraform fmt, yamllint, shellcheck, tflint)
+- **Version Pinning**: Estratégia de pinning + Dependabot para atualizações seguras
+- **Cost Estimation**: Tooling completo com análise detalhada por serviço/ambiente
+
+#### Operações & Documentação
+- **Operational Runbooks**: Procedimentos para deploy, rollback, scaling, incident response
+- **Getting Started Guide**: Setup passo a passo para environments de dev/hom/prod
+- **Documentation Suite**: ARCHITECTURE, COST_ESTIMATION, DOCKER_OPTIMIZATION, BRANCH_PROTECTION, VERSION_PINNING
+
+[Ver roadmap completo →](docs/ROADMAP.md)
+
+
 
 ## Arquitetura
 
@@ -54,28 +109,123 @@ Este projeto implementa uma infraestrutura AWS escalável e segura utilizando Te
 ## Pré-requisitos
 
 - [Terraform](https://www.terraform.io/downloads) >= 1.6.0
-- [AWS CLI](https://aws.amazon.com/cli/) configurado
+- [AWS CLI](https://aws.amazon.com/cli/) configurado (ou use LocalStack)
 - [Git](https://git-scm.com/)
-- Conta AWS com permissões adequadas
+- [Make](https://www.gnu.org/software/make/) (recomendado)
+- [Docker](https://www.docker.com/) (para LocalStack ou builds)
+- Conta AWS com permissões adequadas (ou LocalStack local)
 
 ## Configuração Rápida
 
+👉 **[Guia Completo de Início → GETTING_STARTED.md](GETTING_STARTED.md)**
+
+**Quick Start (30 segundos):**
+
 ```bash
-# 1. Clone o repositório
+# Clone & configure
 git clone https://github.com/codewesleylima/aws-infra-project.git
 cd aws-infra-project
+./scripts/setup-pre-commit.sh
 
-# 2. Configure as variáveis de ambiente AWS
-export AWS_ACCESS_KEY_ID="your-access-key"
-export AWS_SECRET_ACCESS_KEY="your-secret-key"
-export AWS_REGION="us-east-1"
+# Deploy dev (com AWS)
+cd infra/environments/dev
+terraform init && terraform plan && terraform apply
 
-# 3. Inicialize e aplique (ambiente dev)
-cd terraform/environments/dev
-terraform init
-terraform plan
-terraform apply
+# OU deploy local (sem AWS)
+docker run -d -p 4566:4566 --name localstack localstack/localstack
+terraform init -backend=false && terraform plan
 ```
+
+## Rodando a aplicação Spring Boot
+
+```bash
+cd library-app
+mvn spring-boot:run
+```
+
+A API ficará disponível em `http://localhost:8080`.
+
+## Usando Make
+
+Todos os comandos comuns estão disponíveis via Makefile:
+
+```bash
+# Ver todos os comandos
+make help
+
+# Validar todos os ambientes
+make check-all           # Formato + validação + lint
+
+# Planejar mudanças
+make plan-dev
+make plan-hom
+make plan-prod          # Requer aprovação manual
+
+# Aplicar infraestrutura
+make apply-dev
+make apply-hom
+# make apply-prod      # Requer verificação extra
+
+# Estimar custos
+make cost-estimate
+
+# Limpar tudo (apenas dev)
+make destroy-dev
+```
+
+**Outros targets úteis:**
+```bash
+make fmt                 # Formata Terraform
+make init-dev           # Inicializa backend
+make validate-all       # Valida syntax
+make lint               # TFLint em todos os módulos
+make security-check     # TFSec scan
+```
+
+## Novos Módulos
+
+### ✨ CloudWatch Module
+Monitoramento e alertas centralizados para produção.
+
+```bash
+├── infra/modules/cloudwatch/
+│   ├── main.tf              # Dashboard com 8 widgets
+│   │                        # 7 CloudWatch alarms
+│   │                        # Log groups com retenção
+│   │                        # Metric filters customizados
+│   ├── variables.tf         # Validação completa
+│   ├── outputs.tf           # Dashboard ARN, alarms
+│   └── README.md            # Docs com exemplos
+```
+
+**Recurso**: `infra/modules/cloudwatch/main.tf`
+- **Dashboard JSON**: 8 widgets (ALB, ECS, RDS, logs, alarms)
+- **Alarms**: Response time, 5XX errors, CPU/Memory, storage, task count, NAT errors
+- **Log Groups**: `/ecs/{project}-{env}`, `/rds/{project}-{env}`
+- **Metric Filters**: ApplicationErrorCount, HighLatencyRequests
+
+Integrado em: `infra/environments/prod/main.tf` ✅
+
+### ✨ Security Groups Module
+5 security groups reutilizáveis com permissões granulares.
+
+```bash
+├── infra/modules/security_groups/
+│   ├── main.tf              # 5 security groups
+│   │                        # ALB, ECS, RDS, Lambda, VPC Endpoints
+│   ├── variables.tf         # 18+ validações
+│   ├── outputs.tf           # IDs para referências
+│   └── README.md            # Docs com diagrama
+```
+
+**Security Groups**:
+- **ALB SG**: HTTP/HTTPS do internet → configurable CIDR
+- **ECS SG**: Do ALB no port da aplicação + self-reference
+- **RDS SG**: PostgreSQL (5432) apenas de ECS
+- **Lambda SG**: Outbound only (sem inbound)
+- **VPC Endpoints SG**: HTTPS (443) para APIs AWS
+
+Integrado em: `infra/environments/prod/main.tf` ✅
 
 ## Estrutura do Projeto
 
@@ -83,78 +233,318 @@ terraform apply
 aws-infra-project/
 ├── .github/
 │   ├── workflows/
-│   │   ├── ci-cd.yml          # Pipeline principal
-│   │   └── security.yml       # Scans de segurança
-│   ├── ISSUE_TEMPLATE/
-│   │   ├── bug_report.md
-│   │   └── feature_request.md
-│   ├── CODEOWNERS
+│   │   ├── ci-cd.yml                    # Pipeline principal
+│   │   ├── terraform-validate.yml       # Validação de formato/lint
+│   │   └── terraform-security.yml       # TFSec, Trivy, Checkov, Gitleaks
+│   ├── dependabot.yml                   # Atualizações automáticas
+│   ├── CODEOWNERS                       # Roteamento de reviews
 │   └── pull_request_template.md
-├── terraform/
+│
+├── infra/
 │   ├── modules/
-│   │   ├── vpc/               # Rede e subnets
-│   │   ├── ecs/               # Containers
-│   │   ├── rds/               # Banco de dados
-│   │   ├── s3/                # Armazenamento
-│   │   ├── iam/               # Permissões
-│   │   └── secrets/           # Credenciais
+│   │   ├── vpc/                         # Rede e subnets
+│   │   ├── ecs/                         # Containers Fargate
+│   │   ├── rds/                         # PostgreSQL com backups
+│   │   ├── s3/                          # Armazenamento
+│   │   ├── iam/                         # Políticas de acesso
+│   │   ├── kms/                         # Criptografia
+│   │   ├── alb/                         # Load balancer
+│   │   ├── security_groups/             # ✨ Novo: módulo consolidado
+│   │   ├── cloudwatch/                  # ✨ Novo: dashboards & alertas
+│   │   ├── secrets/                     # Gestão de credenciais
+│   │   └── [outros módulos]
+│   │
 │   └── environments/
-│       ├── dev/
-│       ├── staging/
-│       └── prod/
-├── scripts/
-│   └── setup.sh
+│       ├── dev/                         # Desenvolvimento
+│       │   ├── main.tf, variables.tf, outputs.tf
+│       │   └── terraform.tfvars
+│       ├── hom/                         # Homologação
+│       │   ├── main.tf, variables.tf, outputs.tf
+│       │   └── terraform.tfvars
+│       └── prod/                        # Produção
+│           ├── main.tf, variables.tf, outputs.tf
+│           ├── terraform.tfvars
+│           └── .terraform.lock.hcl      # Versions lock
+│
 ├── docs/
-│   └── ARCHITECTURE.md
-├── .gitignore
-├── CONTRIBUTING.md
-├── SECURITY.md
+│   ├── ARCHITECTURE.md                  # Design detalhado
+│   ├── COST_ESTIMATION.md               # ✨ Análise de custos
+│   ├── DOCKER_OPTIMIZATION.md           # ✨ Build optimization
+│   ├── BRANCH_PROTECTION.md             # ✨ Code review setup
+│   ├── VERSION_PINNING.md               # ✨ Estratégia de deps
+│   └── RUNBOOKS.md                      # ✨ Procedimentos operacionais
+│
+├── scripts/
+│   ├── setup-pre-commit.sh              # Setup de hooks
+│   ├── estimate-costs.sh                # ✨ Estimação de custos
+│   ├── setup.sh                         # Configuração geral
+│   └── deploy.sh                        # Deploy automatizado
+│
+├── Makefile                             # ✨ 30+ targets
+├── Dockerfile                           # ✨ Multi-stage otimizado
+├── .dockerignore                        # Build context optimization
+├── .pre-commit-config.yaml              # ✨ Hooks automation
+├── GETTING_STARTED.md                   # ✨ Setup passo a passo
+├── CONTRIBUTING.md                      # Guidelines
+├── SECURITY.md                          # Políticas de segurança
+├── LICENSE
 └── README.md
 ```
 
+**✨ = Novidades nesta iteração**
+
 ## Ambientes
 
-| Ambiente | Descrição | Branch |
-|----------|-----------|--------|
-| `dev` | Desenvolvimento e testes | `develop` |
-| `staging` | Validação pré-produção | `staging` |
-| `prod` | Produção | `main` |
+| Ambiente | Descrição | Branch | Limite |
+|----------|-----------|--------|--------|
+| `dev` | Desenvolvimento e testes | `develop` | Sem limite |
+| `hom` | Homologação / pré-produção | `hom` | 1 aprovação |
+| `prod` | Produção | `main` | 2 aprovações |
+
+## Documentação
+
+### 📚 Guias Essenciais
+
+- **[GETTING_STARTED.md](GETTING_STARTED.md)** - Setup completo passo a passo
+  - Instalação com AWS real ou LocalStack
+  - Primeiros comandos
+  - Troubleshooting
+
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Design da infraestrutura
+  - Componentes e relações
+  - Fluxos de dados
+  - Decisões arquiteturais
+
+- **[docs/COST_ESTIMATION.md](docs/COST_ESTIMATION.md)** - Análise financeira
+  - Custos por ambiente e serviço
+  - Breakdown detalhado (ECS, RDS, ALB, NAT, S3)
+  - Estratégias de otimização (Reserved Instances, Spot, Scaling)
+
+### 🔐 Segurança & Conformidade
+
+- **[SECURITY.md](SECURITY.md)** - Políticas e práticas
+  - Secret management
+  - Encryption em repouso/trânsito
+  - Network security
+  
+- **[docs/BRANCH_PROTECTION.md](docs/BRANCH_PROTECTION.md)** - Code review enforcement
+  - Configuração de branch protection
+  - Workflows de validação (terraform validate, fmt, lint)
+  - Security scanning (TFSec, Trivy, Checkov)
+  - Secret detection (Gitleaks, GitGuardian)
+
+### 🚀 Operações & DevOps
+
+- **[docs/RUNBOOKS.md](docs/RUNBOOKS.md)** - Procedimentos operacionais
+  - Deployment (dev, hom, prod)
+  - Rollback < 5 minutos
+  - Scaling (ECS, RDS)
+  - Incident response
+  - Database operations (snapshots, PITR, restore)
+
+- **[docs/VERSION_PINNING.md](docs/VERSION_PINNING.md)** - Gestão de dependências
+  - Estratégias de pinning (Terraform, Python, Docker, GitHub Actions)
+  - Dependabot configuration
+  - Processo de updates
+
+### 🐳 Otimizações
+
+- **[docs/DOCKER_OPTIMIZATION.md](docs/DOCKER_OPTIMIZATION.md)** - Build performance
+  - Multi-stage builds
+  - Layer caching (80% mais rápido)
+  - Image size optimization (81% menor)
+  - Health checks & security hardening
+
+
 
 ## CI/CD Pipeline
 
-O pipeline executa automaticamente:
+Automatização completa com proteções progressivas por ambiente:
 
-1. **Validação** - Lint e formato do Terraform
-2. **Segurança** - Scan com Checkov e tfsec
-3. **Plan** - Preview das mudanças
-4. **Apply** - Deploy (apenas em branches protegidas)
+### Workflows Configurados
 
-### Proteções de Branch
+1. **terraform-validate.yml** ✅
+   - `terraform init -backend=false`
+   - `terraform validate` para cada environment
+   - `terraform fmt -check` (auto-comment on failure)
+   - `tflint` checks
+   - **Executa**: Em cada push
 
-- `main`: Requer 2 aprovações + CI verde
-- `staging`: Requer 1 aprovação + CI verde
-- `develop`: Requer CI verde
+2. **terraform-security.yml** 🔒
+   - TFSec vulnerability scanning
+   - Trivy container image scanning
+   - Checkov policy compliance
+   - Gitleaks secret detection
+   - GitGuardian (opcional)
+   - **Executa**: Em cada push
+
+3. **ci-cd.yml** 🚀
+   - Plan para todas as environments
+   - Apply apenas em branches protegidas
+   - Notificações e rollback automático
+
+### Branch Protection Rules
+
+**main** (produção)
+```
+✅ Require 2+ approvals
+✅ Require signed commits
+✅ CI checks passing (validate, security, plan)
+✅ Admin review required
+```
+
+**staging** (pré-produção)
+```
+✅ Require 1 approval
+✅ CI checks passing
+✅ Up-to-date branch required
+```
+
+**develop** (desenvolvimento)
+```
+✅ CI checks passing only
+```
+
+🔗 [Ver detalhes → docs/BRANCH_PROTECTION.md](docs/BRANCH_PROTECTION.md)
 
 ## Segurança
 
+Implementação de múltiplas camadas de segurança:
+
+**Network & Data**
 - 🔒 Secrets gerenciados via AWS Secrets Manager
-- 🔐 Criptografia em repouso e trânsito
-- 🛡️ Security Groups com menor privilégio
-- 📝 Logs centralizados no CloudWatch
-- 🔍 Scan automático de vulnerabilidades
+- 🔐 Criptografia KMS em repouso (RDS, S3)
+- 🔐 TLS/HTTPS em trânsito (ALB, RDS)
+- 🛡️ Security Groups consolidados (5 grupos com regras de menor privilégio)
+- 🌐 VPC isolada com public/private subnets
+
+**Code & Infrastructure**
+- ✅ Pre-commit hooks (terraform fmt, trivy, gitleaks, yamllint, shellcheck)
+- ✅ Terraform validate em cada commit
+- ✅ Branch protection com 2+ approvals (main), 1+ (hom)
+- ✅ Secret detection (Gitleaks, GitGuardian) na CI/CD
+- ✅ Automated security scanning (TFSec, Trivy, Checkov)
+
+**Access Control**
+- 👤 IAM com princípio de menor privilégio
+- 👤 RBAC via CODEOWNERS (roteamento automático de reviews)
+- 👤 Signed commits obrigatórios (main branch)
+- 👤 Temporary credentials recomendadas (STS)
+
+**Monitoring & Audit**
+- 📝 Logs centralizados no CloudWatch (30+ dias de retenção)
+- 📊 CloudWatch dashboards com alertas SNS
+- 📋 7 CloudWatch alarms (response time, errors, CPU, memory, storage)
+- 🔍 Terraform state lock (evita estado corrupto)
+- 📡 VPC Flow Logs para análise de tráfego
+
+📖 [Detalhes completos → SECURITY.md](SECURITY.md)
 
 ## Contribuição
 
-Consulte [CONTRIBUTING.md](CONTRIBUTING.md) para guidelines de contribuição.
+Queremos sua contribuição! Siga as guidelines:
 
-**Commits seguem o padrão [Conventional Commits](https://www.conventionalcommits.org/):**
+### Antes de Começar
+1. Leia [CONTRIBUTING.md](CONTRIBUTING.md)
+2. Instale pre-commit hooks: `./scripts/setup-pre-commit.sh`
+3. Crie branch feature: `git checkout -b feat/sua-feature`
 
+### Commits
+Seguimos [Conventional Commits](https://www.conventionalcommits.org/):
+
+```bash
+# Feature
+git commit -m "feat(vpc): add additional AZ support"
+
+# Fix
+git commit -m "fix(rds): correct backup retention window"
+
+# Documentation
+git commit -m "docs(runbooks): add scaling procedures"
+
+# Chore
+git commit -m "chore(deps): update Terraform to 1.7.0"
 ```
-feat: adiciona módulo de monitoramento
-fix: corrige timeout no health check
-docs: atualiza documentação da VPC
-chore: atualiza versão do Terraform
+
+### Pull Request
+1. Escreva descrição clara do que foi mudado
+2. Reference issues relacionadas usando `Closes #123`
+3. Garanta que CI/CD passa (workflows devem estar ✅)
+4. Aguarde review (CODEOWNERS serão notificadas automaticamente)
+5. Merge apenas após aprovação
+
+### Code Quality Checks
+
+Todos os PRs são verificados:
+
+```bash
+✅ terraform validate      # Syntax validation
+✅ terraform fmt           # Code formatting
+✅ tflint                  # Best practices
+✅ tfsec                   # Security
+✅ trivy                   # Vulnerability scanning
+✅ checkov                 # Compliance policies
+✅ gitleaks               # Secret detection
 ```
+
+Falhas bloqueiam o merge. Para feedback, veja o comentário automático no PR.
+
+### Dúvidas?
+
+Dúvidas?
+
+- Documentação: Procure em [docs/](docs/) ou [GETTING_STARTED.md](GETTING_STARTED.md)
+- Issues: [GitHub Issues](../../issues)
+- Implementação: Veja exemplos em módulos existentes
+- Equipe: Slack #infrastructure ou email infrastructure@company.com
+
+## 🔗 Quick Links
+
+| Recurso | Propósito |
+|---------|----------|
+| [GETTING_STARTED.md](GETTING_STARTED.md) | Setup passo a passo (30m) |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Guidelines para contribuição |
+| [SECURITY.md](SECURITY.md) | Políticas de segurança |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Design da infraestrutura |
+| [docs/COST_ESTIMATION.md](docs/COST_ESTIMATION.md) | Análise de custos detalhada |
+| [docs/RUNBOOKS.md](docs/RUNBOOKS.md) | Como operar em produção |
+| [docs/BRANCH_PROTECTION.md](docs/BRANCH_PROTECTION.md) | Code review & CI/CD setup |
+| [docs/DOCKER_OPTIMIZATION.md](docs/DOCKER_OPTIMIZATION.md) | Build performance |
+| [docs/VERSION_PINNING.md](docs/VERSION_PINNING.md) | Gestão de dependências |
+
+## 🚦 Health Check
+
+Para verificar se a infraestrutura está funcionando:
+
+```bash
+# 1. Validação de código
+make check-all
+
+# 2. Verificar status de deployments
+aws ecs describe-services --cluster dev --services myapp-service --query 'services[0].[serviceName,status,runningCount,desiredCount]'
+
+# 3. Ver logs recentes
+aws logs tail /ecs/myapp-dev --follow
+
+# 4. Acessar aplicação
+curl http://<ALB_DNS>/health
+
+# 5. Checklist do operador
+- [ ] CloudWatch alarms estão verdes
+- [ ] ECS tasks rodando = desired count
+- [ ] RDS conexões ativas
+- [ ] Logs sem erros críticos
+- [ ] S3 buckets com dados esperados
+```
+
+## 📞 Suporte
+
+| Canal | Para... |
+|-------|---------|
+| **#infrastructure** (Slack) | Dúvidas técnicas, pair programming |
+| **GitHub Issues** | Bugs, feature requests, tracking |
+| **infrastructure@company.com** | Escalação, emergências |
+| **Standups** | Tuesdays 10am (Slack Video) |
 
 ## Licença
 

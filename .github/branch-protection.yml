@@ -25,8 +25,8 @@ rules:
       allow_force_pushes: false
       allow_deletions: false
 
-## staging branch
-branch_name_pattern: staging
+## hom branch
+branch_name_pattern: hom
 rules:
   - require_pull_request_reviews:
       required_approving_review_count: 1

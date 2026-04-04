@@ -1,0 +1,138 @@
+# Docker Build Context Exclusions
+# Files listed here are NOT sent to Docker daemon during build,
+# reducing build context size and improving caching efficiency
+
+# Git
+.git
+.gitignore
+.gitattributes
+.github/
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.editorconfig
+*.sublime-*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+*.cover
+.python-version
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# Node.js (if applicable)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Package manager caches (will be mounted separately in Docker build)
+.npm/
+.pip-cache/
+/var/cache/
+
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.tfstate.*.backup
+*.tfvars
+!.tfvars.example
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# Documentation (usually not needed in container)
+docs/
+*.md
+README.md
+CHANGELOG.md
+LICENSE
+
+# Tests (optional: keep if test data is needed in container)
+tests/
+test/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+Jenkinsfile
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.bak
+
+# OS files
+Thumbs.db
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Docker related (if building from docker directory)
+docker-compose.yml
+docker-compose.*.yml
+Dockerfile.bak
+
+# Kubernetes
+k8s/
+helm/
+kustomization.yaml
+
+# AWS
+*.pem
+.aws/credentials
+.aws/config
+
+# Misc
+.cache/
+.vagrant/
+.ruby-version
+Gemfile.lock
+yarn.lock
+package-lock.json

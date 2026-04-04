@@ -1,0 +1,23 @@
+# Gitleaks Configuration
+# Detects secrets in git repositories
+# See: https://github.com/gitleaks/gitleaks
+
+[build]
+rules = []
+
+[[allowlist]]
+description = "SECURITY_SECRETS.md contains example patterns for training purposes (redacted values only)"
+paths = [".*/SECURITY_SECRETS\\.md"]
+regexes = [
+  "REDACTED"
+]
+commits = [
+  "cb615e63cefdfb8e66277ce6cbe3b727cf8556ec"  # Security documentation commit
+]
+
+[[allowlist]]
+description = "Exclude test/example files"
+paths = [
+  ".*/\\.env\\.example",
+  ".*/\\.env\\.test"
+]
