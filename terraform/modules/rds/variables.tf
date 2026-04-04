@@ -100,8 +100,8 @@ variable "max_allocated_storage" {
   type        = number
   default     = 100
   validation {
-    condition     = var.max_allocated_storage >= var.allocated_storage
-    error_message = "Max allocated storage must be >= allocated storage."
+    condition     = var.max_allocated_storage >= 20 && var.max_allocated_storage <= 65536
+    error_message = "Max allocated storage must be between 20 and 65536 GB."
   }
 }
 
