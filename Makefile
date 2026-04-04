@@ -57,6 +57,16 @@ help:
 	@echo "  make destroy-hom        - Destroy hom infrastructure"
 	@echo "  make destroy-prod        - Destroy prod infrastructure (requires approval)"
 	@echo ""
+	@echo "$(GREEN)Local CI/CD Testing (Test before pushing!):$(NC)"
+	@echo "  make test-ci             - Run complete local CI/CD pipeline"
+	@echo "  make test-unit           - Run unit tests only"
+	@echo "  make test-build          - Build Spring Boot app and Docker image"
+	@echo "  make test-security-gitleaks - Run Gitleaks secret scanning"
+	@echo "  make test-security-tfsec - Run TFSec Terraform scanning"
+	@echo "  make test-security-docker - Run Trivy vulnerability scan on Docker image"
+	@echo "  make test-docker-compose - Run CI/CD pipeline with docker-compose"
+	@echo "  make test-api            - Test Spring Boot API endpoints locally"
+	@echo ""
 	@echo "$(GREEN)Utilities:$(NC)"
 	@echo "  make clean               - Remove Terraform lock files and .terraform directories"
 	@echo "  make refresh-dev         - Refresh dev state without applying changes"
@@ -69,9 +79,10 @@ help:
 	@echo "  make output-prod         - Show prod outputs"
 	@echo ""
 	@echo "$(YELLOW)Examples:$(NC)"
+	@echo "  make test-ci             # Test everything before pushing"
+	@echo "  make test-unit && make test-build"
 	@echo "  make validate-dev && make plan-dev"
 	@echo "  make fmt && make validate-hom"
-	@echo "  make plan-prod && make apply-prod"
 	@echo ""
 
 # ============================================
@@ -242,5 +253,48 @@ check-prod: fmt validate-prod lint
 
 check-all: fmt validate-dev validate-staging validate-prod lint
 	@echo "$(GREEN)All environments checks passed!$(NC)"
+
+# ============================================
+# Local CI/CD Pipeline Testing
+# ============================================
+test-ci:
+	@echo "$(BLUE)Running complete local CI/CD pipeline...$(NC)"
+	@bash scripts/run-ci-locally.sh
+
+test-unit:
+	@echo "$(BLUE)Running unit tests only...$(NC)"
+	cd library-app && mvn -B clean test
+
+test-build:
+	@echo "$(BLUE)Building Spring Boot and Docker image...$(NC)"
+	mvn -f library-app/pom.xml -B clean package
+	docker build -t library-app:local .
+
+test-security-gitleaks:
+	@echo "$(BLUE)Running Gitleaks scan...$(NC)"
+	@command -v gitleaks >/dev/null 2>&1 || { echo "$(RED)gitleaks not installed. Install: https://github.com/gitleaks/gitleaks$(NC)"; exit 1; }
+	gitleaks detect --config .gitleaks.toml --verbose
+
+test-security-tfsec:
+	@echo "$(BLUE)Running TFSec scan...$(NC)"
+	@command -v tfsec >/dev/null 2>&1 || { echo "$(RED)tfsec not installed. Install: https://github.com/aquasecurity/tfsec$(NC)"; exit 1; }
+	tfsec infra/ --format pretty
+
+test-security-docker:
+	@echo "$(BLUE)Running Trivy vulnerability scan on Docker image...$(NC)"
+	@command -v trivy >/dev/null 2>&1 || { echo "$(RED)trivy not installed. Install: https://github.com/aquasecurity/trivy$(NC)"; exit 1; }
+	docker build -t library-app:scan . && trivy image library-app:scan
+
+test-docker-compose:
+	@echo "$(BLUE)Running CI/CD pipeline with docker-compose...$(NC)"
+	docker-compose -f docker-compose.ci.yml up --abort-on-container-exit --remove-orphans
+
+test-api:
+	@echo "$(BLUE)Testing Spring Boot application locally...$(NC)"
+	@docker run -p 8080:8080 -d --name library-app-test library-app:local && \
+	sleep 5 && \
+	echo "Testing GET /api/books..." && \
+	curl -s http://localhost:8080/api/books | jq . && \
+	docker stop library-app-test && docker rm library-app-test || true
 
 .DEFAULT_GOAL := help
