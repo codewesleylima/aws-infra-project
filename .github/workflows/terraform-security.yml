@@ -30,7 +30,10 @@ jobs:
       - name: Run TFSec
         run: |
           curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
-          tfsec terraform --format sarif --out tfsec-results.sarif || echo "[]" > tfsec-results.sarif
+          tfsec infra/ --format sarif --out tfsec-results.sarif || true
+          if [ ! -f tfsec-results.sarif ] || [ ! -s tfsec-results.sarif ]; then
+            echo '{"version": "2.1.0", "runs": []}' > tfsec-results.sarif
+          fi
 
       - name: Upload SARIF report
         if: always()
@@ -115,7 +118,7 @@ jobs:
       - name: Detect secrets with GitGuardian
         uses: GitGuardian/ggshield-action@v1.24.0
         with:
-          args: --all-commits --verbose
+          args: scan --all-policies --verbose
         env:
           GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
 
