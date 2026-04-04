@@ -115,10 +115,7 @@ jobs:
       - name: Detect secrets with GitGuardian
         uses: GitGuardian/ggshield-action@v1.24.0
         with:
-          debug: false
-          verbose: false
-          fail-on-policy-breach: true
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-commits --verbose
         env:
           GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
 
