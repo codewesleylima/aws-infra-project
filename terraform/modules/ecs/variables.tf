@@ -193,8 +193,8 @@ variable "max_capacity" {
   type        = number
   default     = 10
   validation {
-    condition     = var.max_capacity >= var.min_capacity && var.max_capacity <= 100
-    error_message = "Max capacity must be >= min capacity and <= 100."
+    condition     = var.max_capacity >= 1 && var.max_capacity <= 100
+    error_message = "Max capacity must be between 1 and 100."
   }
 }
 

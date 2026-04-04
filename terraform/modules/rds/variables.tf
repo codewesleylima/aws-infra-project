@@ -100,8 +100,8 @@ variable "max_allocated_storage" {
   type        = number
   default     = 100
   validation {
-    condition     = var.max_allocated_storage >= var.allocated_storage
-    error_message = "Max allocated storage must be >= allocated storage."
+    condition     = var.max_allocated_storage >= 20 && var.max_allocated_storage <= 65536
+    error_message = "Max allocated storage must be between 20 and 65536 GB."
   }
 }
 
@@ -138,7 +138,7 @@ variable "maintenance_window" {
   type        = string
   default     = "Mon:04:00-Mon:05:00"
   validation {
-    condition     = can(regex("^(Mon|Tue|Wed|Thu|Fri|Sat|Sun):[0-2][0-3]:[0-5][0-9]-(Mon|Tue|Wed|Thu|Fri|Sat|Sun):[0-2][0-3]:[0-5][0-9]$", var.maintenance_window))
+    condition     = can(regex("^(Mon|Tue|Wed|Thu|Fri|Sat|Sun):([01][0-9]|2[0-3]):[0-5][0-9]-(Mon|Tue|Wed|Thu|Fri|Sat|Sun):([01][0-9]|2[0-3]):[0-5][0-9]$", var.maintenance_window))
     error_message = "Maintenance window must be in DDD:HH:MM-DDD:HH:MM format."
   }
 }
