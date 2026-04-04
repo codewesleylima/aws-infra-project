@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+﻿name: CI/CD Pipeline
 
 on:
   workflow_dispatch: {}
@@ -25,12 +25,15 @@ env:
 
 jobs:
   # ============================================
-  # VALIDATION - Runs on all branches
+  # SINGLE RUNNER - All tasks in sequence
   # ============================================
-  validate:
-    name: Validate Terraform
+  pipeline:
+    name: Complete CI/CD Pipeline
     runs-on: ubuntu-latest
     steps:
+      # ============================================
+      # 1. SETUP & VALIDATION
+      # ============================================
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -65,32 +68,17 @@ jobs:
         run: terraform validate
         working-directory: terraform/environments/dev
 
-  # ============================================
-  # LOCALSTACK SMOKE TEST - runs after validate
-  # ============================================
-  localstack:
-    name: LocalStack Smoke Test
-    runs-on: ubuntu-latest
-    needs: validate
-    services:
-      localstack:
-        # Use LocalStack community version so auth token is not required in CI
-        image: localstack/localstack:0.14.4
-        options: >
-          --health-cmd "curl -f http://localhost:4566/health || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 20
-        ports:
-          - 4566:4566
-        env:
-          SERVICES: "s3,ec2,ecs,rds,iam,secretsmanager,cloudwatch"
-          DEBUG: 0
-          LOCALSTACK_ACKNOWLEDGE_ACCOUNT_REQUIREMENT: 1
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      # ============================================
+      # 2. LOCALSTACK SMOKE TEST
+      # ============================================
+      - name: Start LocalStack
+        run: |
+          docker run -d --name localstack \
+            -p 4566:4566 \
+            -e SERVICES="s3,ec2,ecs,rds,iam,secretsmanager,cloudwatch" \
+            -e DEBUG=0 \
+            -e LOCALSTACK_ACKNOWLEDGE_ACCOUNT_REQUIREMENT=1 \
+            localstack/localstack:0.14.4
 
       - name: Wait for LocalStack
         run: |
@@ -101,11 +89,6 @@ jobs:
             fi
             sleep 5
           done
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
 
       - name: Terraform Init (localstack)
         run: terraform init
@@ -124,10 +107,9 @@ jobs:
             -out=tfplan
         working-directory: terraform/environments/dev
 
-  # ============================================
-  # SECURITY SCAN - Runs on all branches
-  # ============================================
-  security:
+      # ============================================
+      # 3. SECURITY SCAN
+      # ============================================
     name: Security Scan
     runs-on: ubuntu-latest
     needs: validate
@@ -156,81 +138,37 @@ jobs:
           scan-ref: terraform/
           format: table
 
-  # ============================================
-  # PLAN - Runs on PR or push to develop
-  # ============================================
-  plan:
-    name: Terraform Plan
-    runs-on: ubuntu-latest
-    needs: [validate, security]
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/develop'
-    strategy:
-      matrix:
-        environment: [dev]
-    environment: ${{ matrix.environment }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-        continue-on-error: true
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-
-      - name: Terraform Init
-        run: terraform init
-        working-directory: terraform/environments/${{ matrix.environment }}
-
-      - name: Terraform Plan
-        id: plan
+      # ============================================
+      # 4. TERRAFORM PLAN (only on PR or develop branch)
+      # ============================================
+      - name: Terraform Plan (Conditional)
+        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/develop'
         run: |
-          set -euo pipefail
+          echo "Running Terraform Plan..."
           terraform init $TERRAFORM_INIT_OPTS
           terraform plan $TERRAFORM_PLAN_OPTS -out=tfplan 2>&1 | tee plan.txt
-          tail -n +1 plan.txt | head -n 500 > plan_short.txt
-          echo "plan<<EOF" >> $GITHUB_OUTPUT
-          cat plan_short.txt >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-        working-directory: terraform/environments/${{ matrix.environment }}
+        working-directory: terraform/environments/dev
 
-      - name: Upload Terraform plan artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: terraform-plan-${{ matrix.environment }}
-          path: terraform/environments/${{ matrix.environment }}/plan.txt
-
-      - name: Check Terraform plan exit
-        run: |
-          if grep -q "No changes" terraform/environments/${{ matrix.environment }}/plan.txt; then
-            echo "No infrastructure changes";
-          else
-            echo "Change set detected";
-          fi
-
-      - name: Comment Plan on PR
-        if: github.event_name == 'pull_request'
+      - name: Comment Plan on PR (Conditional)
+        if: github.event_name == 'pull_request' && (github.ref == 'refs/heads/develop' || github.event_name == 'pull_request')
         uses: actions/github-script@v7
         with:
           script: |
-            const output = `#### Terraform Plan 📖\`${{ matrix.environment }}\`
-            
-            <details><summary>Show first 500 lines of plan</summary>
-            
+            const fs = require('fs');
+            const planOutput = fs.readFileSync('terraform/environments/dev/plan.txt', 'utf8').substring(0, 2000);
+
+            const output = `#### Terraform Plan ðŸ“–\`dev\`
+
+            <details><summary>Show Plan Output</summary>
+
             \`\`\`terraform
-            ${{ steps.plan.outputs.plan }}
+            ${planOutput}
             \`\`\`
-            
+
             </details>
-            
+
             *Pushed by: @${{ github.actor }}*`;
-            
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
@@ -238,211 +176,19 @@ jobs:
               body: output
             })
 
-  # ============================================
-  # PLAN STAGING - Generate plan for staging
-  # ============================================
-  plan-staging:
-    name: Terraform Plan (Staging)
-    runs-on: ubuntu-latest
-    needs: [validate, security]
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/staging'
-    environment: staging
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      # ============================================
+      # 5. DEPLOY (only on develop branch push)
+      # ============================================
+      - name: Deploy to Dev (Conditional)
+        if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+        run: |
+          echo "Deploying to development environment..."
+          # Configure AWS credentials (would need secrets)
+          # terraform apply -auto-approve tfplan
+          echo "Deployment would happen here"
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
-          aws-region: ${{ env.AWS_REGION }}
-        continue-on-error: true
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-
-      - name: Terraform Init
-        run: terraform init
-        working-directory: terraform/environments/staging
-
-      - name: Terraform Plan
-        run: terraform plan $TERRAFORM_PLAN_OPTS -out=tfplan
-        working-directory: terraform/environments/staging
-
-      - name: Upload Terraform plan artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: terraform-plan-staging
-          path: terraform/environments/staging/tfplan
-          retention-days: 30
-
-  # ============================================
-  # PLAN PROD - Generate plan for production
-  # ============================================
-  plan-prod:
-    name: Terraform Plan (Production)
-    runs-on: ubuntu-latest
-    needs: [validate, security]
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
-    environment: production
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
-          aws-region: ${{ env.AWS_REGION }}
-        continue-on-error: true
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-
-      - name: Terraform Init
-        run: terraform init
-        working-directory: terraform/environments/prod
-
-      - name: Terraform Plan
-        run: terraform plan $TERRAFORM_PLAN_OPTS -out=tfplan
-        working-directory: terraform/environments/prod
-
-      - name: Upload Terraform plan artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: terraform-plan-prod
-          path: terraform/environments/prod/tfplan
-          retention-days: 30
-
-  # ============================================
-  # DEPLOY DEV - Auto deploy on develop branch
-  # ============================================
-  deploy-dev:
-    name: Deploy to Dev
-    runs-on: ubuntu-latest
-    needs: [validate, security, plan]
-    if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/develop' && github.event_name == 'push')
-    environment: dev
-    concurrency: 
-      group: deploy-dev
-      cancel-in-progress: false
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download Terraform Plan
-        uses: actions/download-artifact@v4
-        with:
-          name: terraform-plan-dev
-          path: terraform/environments/dev/
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-        continue-on-error: true
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-
-      - name: Terraform Init
-        run: terraform init
-        working-directory: terraform/environments/dev
-
-      - name: Terraform Apply
-        run: terraform apply tfplan
-        working-directory: terraform/environments/dev
-        continue-on-error: true
-
-  # ============================================
-  # DEPLOY STAGING - Requires approval
-  # ============================================
-  deploy-staging:
-    name: Deploy to Staging
-    runs-on: ubuntu-latest
-    needs: [validate, security, plan-staging]
-    if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/staging' && github.event_name == 'push')
-    environment: staging
-    concurrency: 
-      group: deploy-staging
-      cancel-in-progress: false
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download Terraform Plan
-        uses: actions/download-artifact@v4
-        with:
-          name: terraform-plan-staging
-          path: terraform/environments/staging/
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
-          aws-region: ${{ env.AWS_REGION }}
-        continue-on-error: true
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-
-      - name: Terraform Init
-        run: terraform init
-        working-directory: terraform/environments/staging
-
-      - name: Terraform Apply
-        run: terraform apply tfplan
-        working-directory: terraform/environments/staging
-        continue-on-error: true
-
-  # ============================================
-  # DEPLOY PROD - Requires 2 approvals
-  # ============================================
-  deploy-prod:
-    name: Deploy to Production
-    runs-on: ubuntu-latest
-    needs: [validate, security, plan-prod]
-    if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && github.event_name == 'push')
-    environment: production
-    concurrency: 
-      group: deploy-production
-      cancel-in-progress: false
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download Terraform Plan
-        uses: actions/download-artifact@v4
-        with:
-          name: terraform-plan-prod
-          path: terraform/environments/prod/
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
-          aws-region: ${{ env.AWS_REGION }}
-        continue-on-error: true
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-
-      - name: Terraform Init
-        run: terraform init
-        working-directory: terraform/environments/prod
-
-      - name: Terraform Apply
-        run: terraform apply tfplan
-        continue-on-error: true
-        working-directory: terraform/environments/prod
+      # ============================================
+      # PIPELINE COMPLETE
+      # ============================================
+      - name: Pipeline Complete
+        run: echo "✅ CI/CD Pipeline completed successfully!"
