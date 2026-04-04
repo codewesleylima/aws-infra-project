@@ -1,0 +1,71 @@
+version: 2
+
+updates:
+  # ============================================
+  # Python Dependencies
+  # ============================================
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+    reviewers:
+      - "guste"
+    assignees:
+      - "guste"
+    labels:
+      - "dependencies"
+      - "python"
+    open-pull-requests-limit: 5
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+
+  # ============================================
+  # GitHub Actions
+  # ============================================
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:30"
+    reviewers:
+      - "guste"
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "ci/cd"
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  # ============================================
+  # Docker Base Images
+  # ============================================
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "05:00"
+    reviewers:
+      - "guste"
+    labels:
+      - "dependencies"
+      - "docker"
+    open-pull-requests-limit: 3
+    # Only update patch versions of base images (security updates)
+    # Don't auto-update minor/major versions
+    ignore:
+      - dependency-name: "python"
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-major"
+      - dependency-name: "alpine"
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-major"

@@ -1,0 +1,103 @@
+services:
+  # ============================================
+  # Build and Test Spring Boot Application
+  # ============================================
+  java-builder:
+    image: maven:3.9.4-eclipse-temurin-17
+    container_name: ci-java-builder
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - maven-cache:/root/.m2/repository
+    command: >
+      sh -c "
+        echo '🔨 Building Spring Boot application...'
+        mvn -f library-app/pom.xml -B clean test package &&
+        echo '✅ Java build and tests passed'
+      "
+
+  # ============================================
+  # Gitleaks - Detect secret patterns
+  # ============================================
+  gitleaks:
+    image: zricethezav/gitleaks:latest
+    container_name: ci-gitleaks
+    working_dir: /repo
+    volumes:
+      - .:/repo
+    environment:
+      GITLEAKS_CONFIG: /repo/.gitleaks.toml
+    entrypoint: ["sh", "-c"]
+    command: >
+      echo '🔐 Running Gitleaks...'
+      gitleaks detect --config /repo/.gitleaks.toml --verbose &&
+      echo '✅ Gitleaks passed'
+
+  # ============================================
+  # TruffleHog - Additional secret detection
+  # ============================================
+  trufflehog:
+    image: trufflesecurity/trufflehog:latest
+    container_name: ci-trufflehog
+    working_dir: /repo
+    volumes:
+      - .:/repo
+    entrypoint: ["sh", "-c"]
+    command: >
+      echo '🔐 Running TruffleHog...'
+      trufflehog filesystem /repo --only-verified --json &&
+      echo '✅ TruffleHog passed'
+
+  # ============================================
+  # TFSec - Terraform security scanning
+  # ============================================
+  tfsec:
+    image: aquasec/tfsec:latest
+    container_name: ci-tfsec
+    working_dir: /repo
+    volumes:
+      - .:/repo
+    entrypoint: ["sh", "-c"]
+    command: >
+      echo '🔒 Running TFSec on Terraform...'
+      tfsec /repo/infra --format sarif --out /tmp/tfsec-results.sarif || true &&
+      echo '✅ TFSec completed'
+
+  # ============================================
+  # Trivy - Vulnerability scanning
+  # ============================================
+  trivy:
+    image: ghcr.io/aquasecurity/trivy:latest
+    container_name: ci-trivy
+    working_dir: /repo
+    volumes:
+      - .:/repo
+    entrypoint: ["sh", "-c"]
+    command: >
+      echo '🔍 Running Trivy vulnerability scan...'
+      trivy config /repo/infra --severity CRITICAL,HIGH --format sarif &&
+      echo '✅ Trivy scan completed'
+
+  # ============================================
+  # Docker Build - Build container image
+  # ============================================
+  docker-builder:
+    image: docker:latest
+    container_name: ci-docker-builder
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: >
+      sh -c "
+        echo '🐳 Building Docker image...'
+        docker build -t library-app:ci-test . &&
+        echo '✅ Docker build passed'
+      "
+
+volumes:
+  maven-cache:
+
+networks:
+  default:
+    name: ci-network

@@ -1,0 +1,126 @@
+# ==============================================
+# Dev Environment Variables
+# ==============================================
+
+variable "aws_region" {
+  description = "Região AWS"
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "project_name" {
+  description = "Nome do projeto"
+  type        = string
+  default     = "aws-infra"
+}
+
+variable "environment" {
+  description = "Ambiente"
+  type        = string
+  default     = "dev"
+}
+
+# VPC
+variable "vpc_cidr" {
+  description = "CIDR da VPC"
+  type        = string
+  default     = "10.0.0.0/16"
+}
+
+variable "availability_zones" {
+  description = "Zonas de disponibilidade"
+  type        = list(string)
+  default     = ["us-east-1a", "us-east-1b"]
+}
+
+variable "enable_nat_gateway" {
+  description = "Habilitar NAT Gateway"
+  type        = bool
+  default     = true
+}
+
+variable "use_localstack" {
+  description = "Se true, usar LocalStack (Docker) em vez de AWS real"
+  type        = bool
+  default     = false
+}
+
+variable "localstack_endpoint" {
+  description = "URL do endpoint LocalStack"
+  type        = string
+  default     = "http://localhost:4566"
+}
+
+variable "aws_access_key" {
+  description = "AWS access key (ou fake para LocalStack)"
+  type        = string
+  default     = "test"
+}
+
+variable "aws_secret_key" {
+  description = "AWS secret key (ou fake para LocalStack)"
+  type        = string
+  default     = "test"
+}
+
+# Database
+variable "db_name" {
+  description = "Nome do banco de dados"
+  type        = string
+  default     = "app"
+}
+
+variable "db_username" {
+  description = "Username do banco"
+  type        = string
+  default     = "postgres"
+}
+
+variable "db_engine_version" {
+  description = "Versão do PostgreSQL"
+  type        = string
+  default     = "15.4"
+}
+
+variable "db_instance_class" {
+  description = "Classe da instância RDS"
+  type        = string
+  default     = "db.t3.micro"
+}
+
+# ECS
+variable "container_name" {
+  description = "Nome do container"
+  type        = string
+  default     = "app"
+}
+
+variable "container_image" {
+  description = "Imagem Docker"
+  type        = string
+  default     = "nginx:alpine"
+}
+
+variable "container_port" {
+  description = "Porta do container"
+  type        = number
+  default     = 80
+}
+
+variable "task_cpu" {
+  description = "CPU da task"
+  type        = number
+  default     = 256
+}
+
+variable "task_memory" {
+  description = "Memória da task"
+  type        = number
+  default     = 512
+}
+
+variable "desired_count" {
+  description = "Número de tasks"
+  type        = number
+  default     = 1
+}

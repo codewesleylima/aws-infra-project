@@ -35,6 +35,27 @@ tfplan
 *.plan
 
 # ==============================================
+# Environment & Secrets (NUNCA COMMITAR!)
+# ==============================================
+.env
+.env.local
+.env.*.local
+.env.prod
+.env.staging
+.env.dev
+secrets.txt
+*.key
+*.pem
+*.cert
+
+# ==============================================
+# AWS Credentials & Config
+# ==============================================
+~/.aws/credentials
+.aws/credentials
+aws_credentials.json
+
+# ==============================================
 # IDE and Editors
 # ==============================================
 .idea/
@@ -98,6 +119,10 @@ __pycache__/
 build/
 dist/
 *.egg-info/
+
+# Java / Spring Boot
+target/
+library-app/target/
 
 # ==============================================
 # Testing

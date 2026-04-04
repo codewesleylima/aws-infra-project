@@ -1,0 +1,45 @@
+# Staging Environment Configuration
+# Copy this to terraform/environments/staging/terraform.tfvars
+# Staging mirrors production but with lower costs for testing
+
+aws_region   = "us-east-1"
+project_name = "myapp"
+environment  = "staging"
+
+# Use specific version tags (not latest) - mirrors production practice
+container_image = "myapp:latest-staging"
+container_port  = 8080
+
+# Multi-task setup for testing
+ecs_desired_count = 2
+ecs_task_cpu      = "512"
+ecs_task_memory   = "1024"
+
+# Moderate database - test like production
+rds_instance_class    = "db.t3.small"
+rds_allocated_storage = 50
+rds_multi_az         = true  # Test multi-AZ failover
+
+# Enable backups for testing restore
+rds_backup_retention = 7
+
+# Standard networking
+enable_nat_gateway = true
+nat_gateway_count  = 1
+
+# Enable monitoring to test dashboards
+enable_monitoring = true
+cloudwatch_log_retention_days = 14
+
+# Database is private (like production)
+allow_public_database_access = false
+
+# Cost allocation tags
+cost_allocation_tags = {
+  Environment = "staging"
+  CostCenter  = "engineering"
+  Managed     = "terraform"
+}
+
+# Restrict access to internal networks
+alb_ingress_cidr_blocks = ["10.0.0.0/8"]

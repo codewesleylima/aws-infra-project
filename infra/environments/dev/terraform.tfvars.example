@@ -1,0 +1,41 @@
+# Development Environment Configuration
+# Copy this to terraform/environments/dev/terraform.tfvars
+# Development is for testing and minimal costs
+
+aws_region   = "us-east-1"
+project_name = "myapp"
+environment  = "dev"
+
+# Use latest tags for development - easy to iterate
+container_image = "nginx:latest"
+container_port  = 8080
+
+# Minimal resources - single task
+ecs_desired_count = 1
+ecs_task_cpu      = "256"
+ecs_task_memory   = "512"
+
+# Small database - free tier eligible
+rds_instance_class    = "db.t3.micro"
+rds_allocated_storage = 20
+rds_multi_az         = false
+
+# Disable expensive features
+enable_nat_gateway = true
+single_nat_gateway = true  # Share across AZs
+
+enable_monitoring = false
+cloudwatch_log_retention_days = 3
+
+# Allow public access for testing/debugging
+allow_public_database_access = true
+
+# Cost allocation tags
+cost_allocation_tags = {
+  Environment = "dev"
+  CostCenter  = "engineering"
+  Managed     = "terraform"
+}
+
+# Allow access from anywhere for development
+alb_ingress_cidr_blocks = ["0.0.0.0/0"]

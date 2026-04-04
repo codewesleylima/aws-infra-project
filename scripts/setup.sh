@@ -66,14 +66,14 @@ echo ""
 # Environment selection
 echo -e "${YELLOW}Select environment to initialize:${NC}"
 echo "  1) dev"
-echo "  2) staging"
+echo "  2) hom"
 echo "  3) prod"
 echo ""
 read -p "Enter choice [1-3]: " env_choice
 
 case $env_choice in
     1) ENV="dev" ;;
-    2) ENV="staging" ;;
+    2) ENV="hom" ;;
     3) ENV="prod" ;;
     *) echo -e "${RED}Invalid choice${NC}"; exit 1 ;;
 esac
@@ -82,7 +82,7 @@ echo ""
 echo -e "${YELLOW}Initializing ${ENV} environment...${NC}"
 
 # Navigate to environment
-cd "terraform/environments/${ENV}"
+cd "infra/environments/${ENV}"
 
 # Initialize Terraform
 echo -e "${YELLOW}Running terraform init...${NC}"
@@ -102,7 +102,7 @@ echo -e "${GREEN}   Setup Complete!                              ${NC}"
 echo -e "${GREEN}================================================${NC}"
 echo ""
 echo "Next steps:"
-echo "  1. Review terraform/environments/${ENV}/variables.tf"
+echo "  1. Review infra/environments/${ENV}/variables.tf"
 echo "  2. Create a terraform.tfvars file with your values"
 echo "  3. Run: terraform plan"
 echo "  4. Run: terraform apply"
