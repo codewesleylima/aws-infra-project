@@ -1,0 +1,129 @@
+# GitHub CODEOWNERS
+# This file specifies automatic code review requirements
+# for different parts of the repository.
+#
+# Syntax: <path> <@owner1> <@owner2>
+# When paths match, owners are automatically requested for PR review.
+#
+# Configuration: Settings → Code review limits → Show code owners
+#
+# References:
+# - https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+# - CODEOWNERS must be in root, .github/, or docs/ directory
+
+# ============================================
+# Default - All files in repo
+# ============================================
+* @guste  # Primary maintainer
+
+
+# ============================================
+# Infrastructure & Terraform
+# ============================================
+/terraform/                          @guste @platform-team
+/terraform/environments/prod/        @guste @devops-leads  # Prod requires extra scrutiny
+/terraform/modules/rds/              @guste @database-team
+/terraform/modules/security_groups/  @guste @security-team
+/terraform/modules/kms/              @guste @security-team
+/terraform/modules/cloudtrail/       @guste @security-team
+/terraform/backends/                 @guste @devops-leads
+
+
+# ============================================
+# CI/CD & GitHub Actions
+# ============================================
+/.github/workflows/                  @guste @devops-team
+/.github/workflows/*-security.yml    @guste @security-team
+/.pre-commit-config.yaml             @guste @devops-team
+
+
+# ============================================
+# Scripts & Automation
+# ============================================
+/scripts/                            @guste @devops-team
+/scripts/setup-*.sh                  @guste @platform-team
+/scripts/estimate-costs.sh           @guste @finops-team
+
+
+# ============================================
+# Documentation
+# ============================================
+/docs/                               @guste @tech-docs-team
+/docs/ARCHITECTURE.md                @guste @platform-team
+/docs/BRANCH_PROTECTION.md           @guste @devops-team
+/docs/COST_ESTIMATION.md             @guste @finops-team
+/docs/DOCKER_OPTIMIZATION.md         @guste @devops-team
+/README.md                           @guste
+/CONTRIBUTING.md                     @guste
+/LICENSE                             @guste
+
+
+# ============================================
+# Build & Container
+# ============================================
+/Dockerfile                          @guste @devops-team
+/.dockerignore                       @guste @devops-team
+/Makefile                            @guste @devops-team
+
+
+# ============================================
+# Configuration Files
+# ============================================
+/.github/                            @guste @devops-team
+/.gitignore                          @guste
+.gitattributes                       @guste
+/.editorconfig                       @guste
+
+
+# ============================================
+# Development & Test
+# ============================================
+/tests/                              @guste @qa-team
+/requirements*                       @guste @platform-team
+/pytest.ini                          @guste
+/setup.py                            @guste
+/tox.ini                             @guste
+
+
+# ============================================
+# Version & Release Management
+# ============================================
+/VERSION                             @guste
+/CHANGELOG.md                        @guste
+/RELEASE_NOTES.md                    @guste
+
+
+# ============================================
+# Security & Compliance
+# ============================================
+/SECURITY.md                         @guste @security-team
+/COMPLIANCE.md                       @guste @security-team
+/.github/security/                   @guste @security-team
+
+
+# ============================================
+# Notes on Team Structure
+# ============================================
+#
+# Replace team names with actual GitHub usernames or team references:
+# - @guste                  - Primary maintainer
+# - @platform-team          - Infrastructure platform engineers
+# - @devops-team             - DevOps/SRE engineers
+# - @devops-leads           - Senior DevOps engineers (required for prod changes)
+# - @database-team          - Database specialists
+# - @security-team          - Security engineers
+# - @finops-team            - FinOps/cost optimization
+# - @tech-docs-team         - Technical documentation team
+# - @qa-team                - QA/Testing
+#
+# To use teams:
+# 1. Create teams in GitHub: Settings → Teams → New Team
+# 2. Add members to teams: Team → Members → Add member
+# 3. Reference in CODEOWNERS as: @org/team-name
+#
+# Common patterns:
+# - All: @username
+# - Single file: /path/to/file.txt @username
+# - Wildcard: /path/* @username
+# - Multiple: /path/ @user1 @user2 (any can approve)
+# - Extensions: *.tf @terraform-team

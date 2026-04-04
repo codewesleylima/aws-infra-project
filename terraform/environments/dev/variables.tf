@@ -39,6 +39,30 @@ variable "enable_nat_gateway" {
   default     = true
 }
 
+variable "use_localstack" {
+  description = "Se true, usar LocalStack (Docker) em vez de AWS real"
+  type        = bool
+  default     = false
+}
+
+variable "localstack_endpoint" {
+  description = "URL do endpoint LocalStack"
+  type        = string
+  default     = "http://localhost:4566"
+}
+
+variable "aws_access_key" {
+  description = "AWS access key (ou fake para LocalStack)"
+  type        = string
+  default     = "test"
+}
+
+variable "aws_secret_key" {
+  description = "AWS secret key (ou fake para LocalStack)"
+  type        = string
+  default     = "test"
+}
+
 # Database
 variable "db_name" {
   description = "Nome do banco de dados"

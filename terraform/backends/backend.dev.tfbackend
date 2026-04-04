@@ -1,0 +1,11 @@
+######################################
+# Terraform Backend Configuration - Dev
+######################################
+# Usage: terraform init -backend-config=backend.dev.tfbackend
+# or:    terraform init -reconfigure -backend-config=backend.dev.tfbackend
+
+bucket         = "your-terraform-state-bucket"
+key            = "aws-infra/dev/terraform.tfstate"
+region         = "us-east-1"
+encrypt        = true
+dynamodb_table = "terraform-state-lock"

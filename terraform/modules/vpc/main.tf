@@ -12,9 +12,17 @@ terraform {
   }
 }
 
-# ----------------------------------------------
+# Auto-discover availability zones if not provided
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
+locals {
+  # Use provided AZs if specified, otherwise auto-discover (limit to 3 for cost optimization)
+  availability_zones = length(var.availability_zones) > 0 ? var.availability_zones : slice(data.aws_availability_zones.available.names, 0, min(3, length(data.aws_availability_zones.available.names)))
+}
+
 # VPC
-# ----------------------------------------------
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
@@ -40,14 +48,14 @@ resource "aws_internet_gateway" "main" {
 # Public Subnets
 # ----------------------------------------------
 resource "aws_subnet" "public" {
-  count                   = length(var.availability_zones)
+  count                   = length(local.availability_zones)
   vpc_id                  = aws_vpc.main.id
   cidr_block              = cidrsubnet(var.vpc_cidr, 4, count.index)
-  availability_zone       = var.availability_zones[count.index]
+  availability_zone       = local.availability_zones[count.index]
   map_public_ip_on_launch = true
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-public-${var.availability_zones[count.index]}"
+    Name = "${var.project_name}-public-${local.availability_zones[count.index]}"
     Type = "public"
   })
 }
@@ -56,13 +64,13 @@ resource "aws_subnet" "public" {
 # Private Subnets
 # ----------------------------------------------
 resource "aws_subnet" "private" {
-  count             = length(var.availability_zones)
+  count             = length(local.availability_zones)
   vpc_id            = aws_vpc.main.id
-  cidr_block        = cidrsubnet(var.vpc_cidr, 4, count.index + length(var.availability_zones))
-  availability_zone = var.availability_zones[count.index]
+  cidr_block        = cidrsubnet(var.vpc_cidr, 4, count.index + length(local.availability_zones))
+  availability_zone = local.availability_zones[count.index]
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-private-${var.availability_zones[count.index]}"
+    Name = "${var.project_name}-private-${local.availability_zones[count.index]}"
     Type = "private"
   })
 }
@@ -71,7 +79,7 @@ resource "aws_subnet" "private" {
 # NAT Gateway (one per AZ for HA)
 # ----------------------------------------------
 resource "aws_eip" "nat" {
-  count  = var.enable_nat_gateway ? length(var.availability_zones) : 0
+  count  = var.enable_nat_gateway ? length(local.availability_zones) : 0
   domain = "vpc"
 
   tags = merge(var.tags, {
@@ -82,12 +90,12 @@ resource "aws_eip" "nat" {
 }
 
 resource "aws_nat_gateway" "main" {
-  count         = var.enable_nat_gateway ? length(var.availability_zones) : 0
+  count         = var.enable_nat_gateway ? length(local.availability_zones) : 0
   allocation_id = aws_eip.nat[count.index].id
   subnet_id     = aws_subnet.public[count.index].id
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-nat-${var.availability_zones[count.index]}"
+    Name = "${var.project_name}-nat-${local.availability_zones[count.index]}"
   })
 
   depends_on = [aws_internet_gateway.main]
@@ -110,7 +118,7 @@ resource "aws_route_table" "public" {
 }
 
 resource "aws_route_table" "private" {
-  count  = var.enable_nat_gateway ? length(var.availability_zones) : 1
+  count  = var.enable_nat_gateway ? length(local.availability_zones) : 1
   vpc_id = aws_vpc.main.id
 
   dynamic "route" {
@@ -127,13 +135,13 @@ resource "aws_route_table" "private" {
 }
 
 resource "aws_route_table_association" "public" {
-  count          = length(var.availability_zones)
+  count          = length(local.availability_zones)
   subnet_id      = aws_subnet.public[count.index].id
   route_table_id = aws_route_table.public.id
 }
 
 resource "aws_route_table_association" "private" {
-  count          = length(var.availability_zones)
+  count          = length(local.availability_zones)
   subnet_id      = aws_subnet.private[count.index].id
   route_table_id = aws_route_table.private[var.enable_nat_gateway ? count.index : 0].id
 }

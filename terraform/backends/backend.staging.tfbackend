@@ -1,0 +1,11 @@
+######################################
+# Terraform Backend Configuration - Staging
+######################################
+# Usage: terraform init -backend-config=backend.staging.tfbackend
+# or:    terraform init -reconfigure -backend-config=backend.staging.tfbackend
+
+bucket         = "your-terraform-state-bucket"
+key            = "aws-infra/staging/terraform.tfstate"
+region         = "us-east-1"
+encrypt        = true
+dynamodb_table = "terraform-state-lock"

@@ -31,7 +31,11 @@ terraform {
 # Provider Configuration
 # ----------------------------------------------
 provider "aws" {
-  region = var.aws_region
+  region                        = var.aws_region
+  access_key                    = var.aws_access_key
+  secret_key                    = var.aws_secret_key
+  skip_credentials_validation   = var.use_localstack
+  skip_metadata_api_check       = var.use_localstack
 
   default_tags {
     tags = {
@@ -41,18 +45,45 @@ provider "aws" {
       Repository  = "aws-infra-project"
     }
   }
-}
 
-# ----------------------------------------------
-# Local Variables
-# ----------------------------------------------
-locals {
-  common_tags = {
-    Environment = var.environment
-    Project     = var.project_name
-    ManagedBy   = "Terraform"
+  dynamic "endpoints" {
+    for_each = var.use_localstack ? [1] : []
+    content {
+      ec2            = var.localstack_endpoint
+      rds            = var.localstack_endpoint
+      s3             = var.localstack_endpoint
+      ecs            = var.localstack_endpoint
+      iam            = var.localstack_endpoint
+      secretsmanager = var.localstack_endpoint
+      cloudwatch     = var.localstack_endpoint
+    }
   }
 }
+
+# All resources automatically tagged via provider.default_tags
+
+# ----------------------------------------------
+# ALB Module
+# ----------------------------------------------
+module "alb" {
+  source = "../../modules/alb"
+
+  project_name      = var.project_name
+  environment       = var.environment
+  vpc_id            = module.vpc.vpc_id
+  public_subnet_ids = module.vpc.public_subnet_ids
+
+  enable_alb             = true
+  container_port        = var.container_port
+  health_check_path     = "/health"
+  health_check_matcher  = "200-299"
+  certificate_arn       = null
+  alb_logs_bucket       = null
+
+  depends_on = [module.vpc]
+}
+
+# All resources automatically tagged via provider.default_tags
 
 # ----------------------------------------------
 # VPC Module
@@ -63,11 +94,9 @@ module "vpc" {
   project_name       = var.project_name
   environment        = var.environment
   vpc_cidr           = var.vpc_cidr
-  availability_zones = var.availability_zones
+  availability_zones = []  # Auto-discover AZs from region
   enable_nat_gateway = var.enable_nat_gateway
   enable_flow_logs   = true
-
-  tags = local.common_tags
 }
 
 # ----------------------------------------------
@@ -91,8 +120,6 @@ module "s3_storage" {
       noncurrent_version_expiration_days = 30
     }
   ]
-
-  tags = local.common_tags
 }
 
 # ----------------------------------------------
@@ -105,7 +132,7 @@ module "rds" {
   environment             = var.environment
   vpc_id                  = module.vpc.vpc_id
   private_subnet_ids      = module.vpc.private_subnet_ids
-  allowed_security_groups = [module.ecs.ecs_security_group_id]
+  allowed_security_groups = []
 
   db_name          = var.db_name
   db_username      = var.db_username
@@ -116,8 +143,6 @@ module "rds" {
   backup_retention_period     = 7
   enable_performance_insights = true
   monitoring_interval         = 60
-
-  tags = local.common_tags
 
   depends_on = [module.vpc]
 }
@@ -132,7 +157,6 @@ module "ecs" {
   environment        = var.environment
   aws_region         = var.aws_region
   vpc_id             = module.vpc.vpc_id
-  public_subnet_ids  = module.vpc.public_subnet_ids
   private_subnet_ids = module.vpc.private_subnet_ids
 
   container_name  = var.container_name
@@ -154,20 +178,14 @@ module "ecs" {
     }
   ]
 
-  secrets = [
-    {
-      name       = "DATABASE_URL"
-      value_from = module.rds.db_credentials_secret_arn
-    }
-  ]
+  secrets = []
 
-  enable_alb                = true
-  enable_autoscaling        = true
-  min_capacity              = 1
-  max_capacity              = 5
+  alb_target_group_arn   = module.alb.target_group_arn
+  alb_security_group_id  = module.alb.alb_security_group_id
+  enable_autoscaling     = true
+  min_capacity           = 1
+  max_capacity           = 5
   enable_container_insights = true
 
-  tags = local.common_tags
-
-  depends_on = [module.vpc, module.rds]
+  depends_on = [module.vpc, module.alb]
 }

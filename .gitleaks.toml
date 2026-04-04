@@ -1,0 +1,28 @@
+# Gitleaks Configuration
+# Detects secrets in git repositories
+# See: https://github.com/gitleaks/gitleaks
+
+[build]
+# Regex rules to apply
+rules = []
+
+[[allowlist]]
+description = "SECURITY_SECRETS.md contains example patterns for training purposes (redacted values only)"
+paths = [".*/SECURITY_SECRETS\\.md"]
+regexes = [
+  "export AWS_SECRET_ACCESS_KEY=REDACTED",
+  "curl -H \"Authorization: token REDACTED\"",
+]
+
+[[allowlist]]
+description = "Exclude test/example files"
+paths = [
+  ".*/\\.env\\.example",
+  ".*/\\.env\\.test",
+]
+
+# Commits to ignore
+[[allowlist.commits]]
+commits = [
+  "cb615e63cefdfb8e66277ce6cbe3b727cf8556ec",  # Security documentation commit
+]

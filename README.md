@@ -60,22 +60,43 @@ Este projeto implementa uma infraestrutura AWS escalável e segura utilizando Te
 
 ## Configuração Rápida
 
+### 1) AWS real (quando disponível)
 ```bash
-# 1. Clone o repositório
+# Clone o repositório
 git clone https://github.com/codewesleylima/aws-infra-project.git
 cd aws-infra-project
 
-# 2. Configure as variáveis de ambiente AWS
+# Configure as variáveis de ambiente AWS
 export AWS_ACCESS_KEY_ID="your-access-key"
 export AWS_SECRET_ACCESS_KEY="your-secret-key"
 export AWS_REGION="us-east-1"
 
-# 3. Inicialize e aplique (ambiente dev)
+# Inicialize e aplique (ambiente dev)
 cd terraform/environments/dev
 terraform init
 terraform plan
 terraform apply
 ```
+
+### 2) Local (sem AWS) usando LocalStack + Docker
+Recomendado se você não tem credenciais AWS:
+
+```bash
+# Instale LocalStack (Docker deve estar instalado)
+docker run --rm -d --name localstack -p 4566:4566 -p 4571:4571 localstack/localstack
+
+# Vá para o diretório do projeto
+git clone https://github.com/codewesleylima/aws-infra-project.git
+cd aws-infra-project/terraform/environments/dev
+
+# Execute com LocalStack
+terraform init
+terraform plan -var='use_localstack=true' -var='localstack_endpoint=http://localhost:4566'
+# Se quiser apply (local apenas)
+terraform apply -var='use_localstack=true' -var='localstack_endpoint=http://localhost:4566' -auto-approve
+```
+
+> Teste recomendável: `terraform fmt -recursive` e `terraform validate` antes de `plan`.
 
 ## Estrutura do Projeto
 

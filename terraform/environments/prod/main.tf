@@ -41,11 +41,29 @@ provider "aws" {
 }
 
 locals {
-  common_tags = {
-    Environment = "prod"
-    Project     = var.project_name
-    ManagedBy   = "Terraform"
+  # Custom tags added to provider default_tags
+  custom_tags = {
     CostCenter  = "production"
+  }
+}
+
+# ----------------------------------------------
+# KMS - Production encryption key with rotation
+# ----------------------------------------------
+module "kms" {
+  source = "../../modules/kms"
+
+  project_name            = var.project_name
+  environment             = "prod"
+  enable_key_rotation     = true
+  rotation_period_in_days = 365
+  deletion_window_in_days = 30
+  multi_region            = false
+  enable_usage_alarms     = true
+  alarm_actions           = []
+
+  tags = {
+    Name = "${var.project_name}-kms-prod"
   }
 }
 
@@ -57,13 +75,140 @@ module "vpc" {
 
   project_name       = var.project_name
   environment        = "prod"
-  vpc_cidr           = "10.2.0.0/16"
-  availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
+  vpc_cidr           = var.vpc_cidr
+  availability_zones = []  # Auto-discover AZs from region
   enable_nat_gateway = true
   enable_flow_logs   = true
-
-  tags = local.common_tags
 }
+
+# ----------------------------------------------
+# Security Groups - Centralized management
+# ----------------------------------------------
+module "security_groups" {
+  source = "../../modules/security_groups"
+
+  project_name            = var.project_name
+  environment             = "prod"
+  vpc_id                  = module.vpc.vpc_id
+  vpc_cidr                = var.vpc_cidr
+  container_port          = var.container_port
+  alb_ingress_cidr_blocks = var.alb_ingress_cidr_blocks
+  enable_vpc_endpoints_sg = true
+
+  tags = {
+    Name = "${var.project_name}-sgs-prod"
+  }
+
+  depends_on = [module.vpc]
+}
+
+# ----------------------------------------------
+# ALB - Production
+# ----------------------------------------------
+module "alb" {
+  source = "../../modules/alb"
+
+  project_name       = var.project_name
+  environment        = "prod"
+  vpc_id             = module.vpc.vpc_id
+  public_subnet_ids  = module.vpc.public_subnet_ids
+  alb_security_group_id = module.security_groups.alb_security_group_id
+
+  enable_alb             = true
+  container_port        = var.container_port
+  health_check_path     = "/health"
+  health_check_matcher  = "200-299"
+  certificate_arn       = null
+  alb_logs_bucket       = aws_s3_bucket.alb_logs.id
+
+  depends_on = [module.vpc, module.security_groups, aws_s3_bucket.alb_logs]
+}
+
+# ----------------------------------------------
+# CloudTrail - Production audit logging
+# ----------------------------------------------
+module "cloudtrail" {
+  source = "../../modules/cloudtrail"
+
+  project_name                = var.project_name
+  environment                 = "prod"
+  enable_cloudtrail           = true
+  enable_log_file_validation  = true
+  include_global_service_events = true
+  is_multi_region_trail       = true
+  kms_key_id                  = null
+  s3_log_retention_days       = 90
+
+  depends_on = [module.vpc]
+}
+
+# ----------------------------------------------
+# S3 - ALB Access Logs
+# ----------------------------------------------
+# Get the ELB service account ID for the region
+data "aws_elb_service_account" "main" {}
+
+resource "aws_s3_bucket" "alb_logs" {
+  bucket = "${var.project_name}-alb-logs-${data.aws_caller_identity.current.account_id}-${var.environment}"
+
+  tags = {
+    Name = "${var.project_name}-alb-logs-${var.environment}"
+  }
+}
+
+resource "aws_s3_bucket_versioning" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_policy" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          AWS = data.aws_elb_service_account.main.arn
+        }
+        Action   = "s3:PutObject"
+        Resource = "${aws_s3_bucket.alb_logs.arn}/*"
+      }
+    ]
+  })
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  rule {
+    id     = "delete-old-logs"
+    status = "Enabled"
+
+    expiration {
+      days = 30
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 7
+    }
+  }
+}
+
+data "aws_caller_identity" "current" {}
 
 # ----------------------------------------------
 # S3 - Production with replication ready
@@ -93,8 +238,6 @@ module "s3_storage" {
       expiration_days          = 365
     }
   ]
-
-  tags = local.common_tags
 }
 
 # ----------------------------------------------
@@ -107,24 +250,23 @@ module "rds" {
   environment             = "prod"
   vpc_id                  = module.vpc.vpc_id
   private_subnet_ids      = module.vpc.private_subnet_ids
-  allowed_security_groups = [module.ecs.ecs_security_group_id]
+  allowed_security_groups = [module.security_groups.rds_security_group_id]
 
-  db_name        = "app"
-  db_username    = "postgres"
-  engine_version = "15.4"
-  instance_class = "db.r6g.large"
+  db_name        = var.db_name
+  db_username    = var.db_username
+  engine_version = var.db_engine_version
+  instance_class = var.db_instance_class
   multi_az       = true
 
-  allocated_storage     = 100
-  max_allocated_storage = 500
+  allocated_storage     = var.db_allocated_storage
+  max_allocated_storage = var.db_max_allocated_storage
 
-  backup_retention_period     = 30
+  backup_retention_period     = var.db_backup_retention_period
   enable_performance_insights = true
   monitoring_interval         = 30
+  kms_key_arn                 = module.kms.key_arn
 
-  tags = local.common_tags
-
-  depends_on = [module.vpc]
+  depends_on = [module.vpc, module.kms, module.security_groups]
 }
 
 # ----------------------------------------------
@@ -137,16 +279,15 @@ module "ecs" {
   environment        = "prod"
   aws_region         = var.aws_region
   vpc_id             = module.vpc.vpc_id
-  public_subnet_ids  = module.vpc.public_subnet_ids
   private_subnet_ids = module.vpc.private_subnet_ids
 
   container_name  = "app"
   container_image = var.container_image
-  container_port  = 8080
+  container_port  = var.container_port
 
-  task_cpu      = 1024
-  task_memory   = 2048
-  desired_count = 3
+  task_cpu      = var.task_cpu
+  task_memory   = var.task_memory
+  desired_count = var.desired_count
 
   environment_variables = [
     {
@@ -166,16 +307,15 @@ module "ecs" {
     }
   ]
 
-  enable_alb         = true
-  enable_autoscaling = true
-  min_capacity       = 3
-  max_capacity       = 20
-  cpu_target_value   = 60
+  alb_target_group_arn   = module.alb.target_group_arn
+  alb_security_group_id  = module.security_groups.ecs_security_group_id
+  enable_autoscaling     = true
+  min_capacity           = 3
+  max_capacity           = 20
+  cpu_target_value       = 60
 
   enable_container_insights = true
   enable_execute_command    = false
 
-  tags = local.common_tags
-
-  depends_on = [module.vpc, module.rds]
+  depends_on = [module.vpc, module.alb, module.security_groups]
 }
