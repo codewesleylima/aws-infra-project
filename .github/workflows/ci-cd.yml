@@ -110,11 +110,7 @@ jobs:
       # ============================================
       # 3. SECURITY SCAN
       # ============================================
-    name: Security Scan
-    runs-on: ubuntu-latest
-    needs: validate
-    steps:
-      - name: Checkout code
+      - name: Checkout code for security
         uses: actions/checkout@v4
 
       - name: Run Checkov
@@ -150,24 +146,24 @@ jobs:
         working-directory: terraform/environments/dev
 
       - name: Comment Plan on PR (Conditional)
-        if: github.event_name == 'pull_request' && (github.ref == 'refs/heads/develop' || github.event_name == 'pull_request')
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
             const planOutput = fs.readFileSync('terraform/environments/dev/plan.txt', 'utf8').substring(0, 2000);
 
-            const output = `#### Terraform Plan ðŸ“–\`dev\`
+            const output = `#### Terraform Plan \`dev\`
 
-            <details><summary>Show Plan Output</summary>
+<details><summary>Show Plan Output</summary>
 
-            \`\`\`terraform
-            ${planOutput}
-            \`\`\`
+\`\`\`terraform
+${planOutput}
+\`\`\`
 
-            </details>
+</details>
 
-            *Pushed by: @${{ github.actor }}*`;
+*Pushed by: @${{ github.actor }}*`;
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
