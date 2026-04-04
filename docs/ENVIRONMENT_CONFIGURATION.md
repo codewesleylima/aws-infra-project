@@ -1,18 +1,18 @@
 # Environment-Specific Configuration Guide
 
-Complete guide to configuring Terraform variables for different environments (dev, staging, prod).
+Complete guide to configuring Terraform variables for different environments (dev, hom, prod).
 
 ## Quick Reference
 
-| Variable | Dev | Staging | Prod | Description |
-|----------|-----|---------|------|-------------|
+| Variable | Dev | Hom | Prod | Description |
+|----------|-----|-----|------|-------------|
 | `aws_region` | `us-east-1` | `us-east-1` | `us-east-1` | AWS region for deployment |
 | `project_name` | `myapp` | `myapp` | `myapp` | Project identifier (lowercase) |
-| `container_image` | `nginx:latest` | `myapp:staging` | `myapp:1.2.3` | Exact container version |
+| `container_image` | `nginx:latest` | `myapp:hom` | `myapp:1.2.3` | Exact container version |
 | `ecs_desired_count` | `1` | `2` | `3` | Running tasks |
 | `ecs_task_cpu` | `256` | `512` | `1024` | CPU units per task |
 | `enable_monitoring` | `false` | `true` | `true` | Detailed CloudWatch metrics |
-| `cost_allocation_tags` | `cost-dev` | `cost-staging` | `cost-prod` | Cost tracking |
+| `cost_allocation_tags` | `cost-dev` | `cost-hom` | `cost-prod` | Cost tracking |
 
 ## Development Environment (`dev`)
 
@@ -26,7 +26,7 @@ Optimized for rapid development and testing.
 
 ### terraform.tfvars
 
-Create `terraform/environments/dev/terraform.tfvars`:
+Create `infra/environments/dev/terraform.tfvars`:
 
 ```hcl
 # Core Configuration
@@ -92,7 +92,7 @@ terraform apply
 ### Usage
 
 ```bash
-cd terraform/environments/dev
+cd infra/environments/dev
 
 # Use the tfvars file
 terraform init
@@ -129,7 +129,7 @@ Total         = $155-200/month
 
 ---
 
-## Staging Environment (`staging`)
+## Hom Environment (`hom`)
 
 Bridge between development and production. Tests everything before prod.
 
@@ -141,16 +141,16 @@ Bridge between development and production. Tests everything before prod.
 
 ### terraform.tfvars
 
-Create `terraform/environments/staging/terraform.tfvars`:
+Create `infra/environments/hom/terraform.tfvars`:
 
 ```hcl
 # Core Configuration
 aws_region   = "us-east-1"
 project_name = "myapp"
-environment  = "staging"
+environment  = "hom"
 
 # Container Configuration - Use SPECIFIC tags, not latest
-container_image = "myapp:v1.2.3-staging"  # Specific version
+container_image = "myapp:v1.2.3-hom"  # Specific version
 container_port  = 8080
 
 # ECS Configuration - Closer to production
@@ -179,7 +179,7 @@ read_replica_class      = "db.t3.small"
 # Networking
 enable_nat_gateway     = true
 nat_gateway_count      = 1               # Single NAT (cost)
-enable_vpn             = false           # Not needed for staging
+enable_vpn             = false           # Not needed for hom
 
 # Storage
 s3_versioning_enabled  = true            # Test versioning
@@ -209,7 +209,7 @@ enable_xray            = false           # Enable to test
 # Cost Allocation
 cost_allocation_tags = {
   CostCenter  = "engineering"
-  Environment = "staging"
+  Environment = "hom"
   Managed     = "terraform"
 }
 
@@ -227,7 +227,7 @@ require_secure_transport = true          # HTTPS only
 ### Environment Variables
 
 ```bash
-export TF_VAR_container_image="myapp:v1.2.3-staging"
+export TF_VAR_container_image="myapp:v1.2.3-hom"
 export TF_VAR_ecs_desired_count=2
 export TF_VAR_rds_instance_class="db.t3.small"
 
@@ -237,14 +237,14 @@ terraform apply
 ### Usage
 
 ```bash
-cd terraform/environments/staging
+cd infra/environments/hom
 
 terraform init
 terraform plan
 terraform apply
 
 # Test with realistic load
-ab -n 1000 -c 20 http://staging-alb.example.com/
+ab -n 1000 -c 20 http://hom-alb.example.com/
 
 # Monitor metrics in CloudWatch
 ```
@@ -291,7 +291,7 @@ Maximum reliability, security, and performance. No cost shortcuts.
 
 ### terraform.tfvars
 
-Create `terraform/environments/prod/terraform.tfvars`:
+Create `infra/environments/prod/terraform.tfvars`:
 
 ```hcl
 # Core Configuration
@@ -480,7 +480,7 @@ disable_cross_region   = false            # Can replicate
 ### Usage & Deployment
 
 ```bash
-cd terraform/environments/prod
+cd infra/environments/prod
 
 # CAREFUL: Production deployments require extra steps
 terraform init
@@ -507,14 +507,14 @@ terraform apply --auto-approve=false
 git checkout -b change/prod-update-container
 
 # Step 2: Update variables
-vi terraform/environments/prod/terraform.tfvars
+vi infra/environments/prod/terraform.tfvars
 
-# Step 3: Test in staging first
-make plan-staging
-make apply-staging
+# Step 3: Test in hom first
+make plan-hom
+make apply-hom
 
-# Step 4: Verify staging works
-curl https://staging.example.com/health
+# Step 4: Verify hom works
+curl https://hom.example.com/health
 
 # Step 5: Commit changes
 git add -A
@@ -540,7 +540,7 @@ curl https://prod.example.com/health
 ```bash
 # Contact ops team for approval
 # Update variable with explicit reason
-vi terraform/environments/prod/terraform.tfvars
+vi infra/environments/prod/terraform.tfvars
 
 # Emergency flag
 EMERGENCY=true terraform apply
@@ -599,7 +599,7 @@ container_image = "registry.io/myapp:sha-123"  # Git SHA
 | Environment | Class | vCPU | RAM | Max Connections |
 |------------|-------|------|-----|-----------------|
 | dev | `db.t3.micro` | 1 | 1GB | 45 |
-| staging | `db.t3.small` | 1 | 2GB | 45 |
+| hom | `db.t3.small` | 1 | 2GB | 45 |
 | prod | `db.r6g.large` | 2 | 16GB | 400+ |
 
 ### Cost Allocation Tags
@@ -608,7 +608,7 @@ All resources must have these tags:
 
 ```hcl
 cost_allocation_tags = {
-  Environment  = "dev|staging|prod"
+  Environment  = "dev|hom|prod"
   CostCenter   = "engineering"    # Your team
   Project      = "myapp"          # Project name
   ManagedBy    = "terraform"      # IaC tool
@@ -637,7 +637,7 @@ dev (1 task)
     ↓
     Test locally for 1-2 weeks
     ↓
-staging (2+ tasks)
+hom (2+ tasks)
     ↓
     Validate for 1-2 weeks
     ↓
@@ -649,7 +649,7 @@ prod (3+ tasks)
 ### Promotion Checklist
 
 - [ ] Code reviewed and merged
-- [ ] Tested in staging
+- [ ] Tested in hom
 - [ ] Performance tests passed
 - [ ] Security scan passed
 - [ ] Cost estimated
@@ -668,12 +668,12 @@ prod (3+ tasks)
 
 ```bash
 # Development
-vi terraform/environments/dev/terraform.tfvars
+vi infra/environments/dev/terraform.tfvars
 # container_image = "myapp:test-feature"
 terraform apply
 
 # Production (requires PR + review)
-vi terraform/environments/prod/terraform.tfvars
+vi infra/environments/prod/terraform.tfvars
 # container_image = "myapp:v1.2.4"
 git add -A && git commit -m "chore(prod): update container to v1.2.4"
 git push origin change/container-update
@@ -683,13 +683,13 @@ git push origin change/container-update
 ### Scale Up/Down
 
 ```bash
-# Staging: Scale to handle load test
-vi terraform/environments/staging/terraform.tfvars
+# Hom: Scale to handle load test
+vi infra/environments/hom/terraform.tfvars
 # ecs_desired_count = 5
 terraform apply
 
 # Production: Scale for traffic spike
-vi terraform/environments/prod/terraform.tfvars
+vi infra/environments/prod/terraform.tfvars
 # ecs_desired_count = 8
 terraform apply  # Or use AWS Console autoscaling
 ```
@@ -697,8 +697,8 @@ terraform apply  # Or use AWS Console autoscaling
 ### Change Database Class
 
 ```bash
-# Staging: Test with more RAM
-vi terraform/environments/staging/terraform.tfvars
+# Hom: Test with more RAM
+vi infra/environments/hom/terraform.tfvars
 # rds_instance_class = "db.t3.medium"
 terraform apply
 
@@ -717,10 +717,10 @@ Check that the instance class matches your environment:
 
 ```bash
 # Dev should use small/micro
-# Staging should use small/medium
+# Hom should use small/medium
 # Prod should use large/xlarge+ (RAM-optimized)
 
-# Fix: terraform/environments/prod/terraform.tfvars
+# Fix: infra/environments/prod/terraform.tfvars
 rds_instance_class = "db.r6g.large"  # Correct for prod
 ```
 

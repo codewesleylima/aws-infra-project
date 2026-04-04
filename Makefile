@@ -15,8 +15,8 @@
 
 # Variables
 TERRAFORM := terraform
-TF_DIR := terraform
-ENVIRONMENTS := dev staging prod
+TF_DIR := infra
+ENVIRONMENTS := dev hom prod
 
 # Colors for output
 BLUE := \033[0;34m
@@ -32,44 +32,45 @@ help:
 	@echo ""
 	@echo "$(GREEN)Initialization:$(NC)"
 	@echo "  make init-dev            - Initialize Terraform backend for dev"
-	@echo "  make init-staging        - Initialize Terraform backend for staging"
+	@echo "  make init-hom            - Initialize Terraform backend for hom"
 	@echo "  make init-prod           - Initialize Terraform backend for prod"
 	@echo ""
 	@echo "$(GREEN)Code Quality:$(NC)"
 	@echo "  make fmt                 - Format all Terraform files"
 	@echo "  make fmt-check           - Check Terraform formatting without changes"
 	@echo "  make validate-dev        - Validate dev environment configuration"
-	@echo "  make validate-staging    - Validate staging environment configuration"
+	@echo "  make build-app           - Build the Spring Boot library app"
+	@echo "  make validate-hom       - Validate hom environment configuration"
 	@echo "  make validate-prod       - Validate prod environment configuration"
 	@echo "  make lint                - Run security/style linter (tfsec)"
 	@echo ""
 	@echo "$(GREEN)Planning & Deployment:$(NC)"
 	@echo "  make plan-dev            - Plan changes for dev environment"
-	@echo "  make plan-staging        - Plan changes for staging environment"
+	@echo "  make plan-hom            - Plan changes for hom environment"
 	@echo "  make plan-prod           - Plan changes for prod environment (requires approval)"
 	@echo "  make apply-dev           - Apply changes for dev environment"
-	@echo "  make apply-staging       - Apply changes for staging environment"
+	@echo "  make apply-hom           - Apply changes for hom environment"
 	@echo "  make apply-prod          - Apply changes for prod environment (requires approval)"
 	@echo ""
 	@echo "$(GREEN)Destruction:$(NC)"
 	@echo "  make destroy-dev         - Destroy dev infrastructure"
-	@echo "  make destroy-staging     - Destroy staging infrastructure"
+	@echo "  make destroy-hom        - Destroy hom infrastructure"
 	@echo "  make destroy-prod        - Destroy prod infrastructure (requires approval)"
 	@echo ""
 	@echo "$(GREEN)Utilities:$(NC)"
 	@echo "  make clean               - Remove Terraform lock files and .terraform directories"
 	@echo "  make refresh-dev         - Refresh dev state without applying changes"
-	@echo "  make refresh-staging     - Refresh staging state without applying changes"
+	@echo "  make refresh-hom         - Refresh hom state without applying changes"
 	@echo "  make refresh-prod        - Refresh prod state without applying changes"
 	@echo "  make graph               - Generate and view infrastructure graph (requires graphviz)"
 	@echo "  make cost-estimate       - Estimate infrastructure costs (requires infracost)"
 	@echo "  make output-dev          - Show dev outputs"
-	@echo "  make output-staging      - Show staging outputs"
+	@echo "  make output-hom          - Show hom outputs"
 	@echo "  make output-prod         - Show prod outputs"
 	@echo ""
 	@echo "$(YELLOW)Examples:$(NC)"
 	@echo "  make validate-dev && make plan-dev"
-	@echo "  make fmt && make validate-staging"
+	@echo "  make fmt && make validate-hom"
 	@echo "  make plan-prod && make apply-prod"
 	@echo ""
 
@@ -80,9 +81,9 @@ init-dev:
 	@echo "$(BLUE)Initializing Terraform backend for dev...$(NC)"
 	cd $(TF_DIR)/environments/dev && $(TERRAFORM) init -backend-config=../../backends/backend.dev.tfbackend
 
-init-staging:
-	@echo "$(BLUE)Initializing Terraform backend for staging...$(NC)"
-	cd $(TF_DIR)/environments/staging && $(TERRAFORM) init -backend-config=../../backends/backend.staging.tfbackend
+init-hom:
+	@echo "$(BLUE)Initializing Terraform backend for hom...$(NC)"
+	cd $(TF_DIR)/environments/hom && $(TERRAFORM) init -backend-config=../../backends/backend.hom.tfbackend
 
 init-prod:
 	@echo "$(BLUE)Initializing Terraform backend for prod...$(NC)"
@@ -103,13 +104,17 @@ validate-dev:
 	@echo "$(BLUE)Validating dev environment...$(NC)"
 	cd $(TF_DIR)/environments/dev && $(TERRAFORM) validate
 
-validate-staging:
-	@echo "$(BLUE)Validating staging environment...$(NC)"
-	cd $(TF_DIR)/environments/staging && $(TERRAFORM) validate
+validate-hom:
+	@echo "$(BLUE)Validating hom environment...$(NC)"
+	cd $(TF_DIR)/environments/hom && $(TERRAFORM) validate
 
 validate-prod:
 	@echo "$(BLUE)Validating prod environment...$(NC)"
 	cd $(TF_DIR)/environments/prod && $(TERRAFORM) validate
+
+build-app:
+	@echo "$(BLUE)Building Spring Boot library app...$(NC)"
+	cd library-app && mvn -B package
 
 lint:
 	@echo "$(BLUE)Running Terraform linter (tfsec)...$(NC)"
@@ -123,9 +128,9 @@ plan-dev: validate-dev
 	@echo "$(BLUE)Planning changes for dev...$(NC)"
 	cd $(TF_DIR)/environments/dev && $(TERRAFORM) plan -out=tfplan
 
-plan-staging: validate-staging
-	@echo "$(BLUE)Planning changes for staging...$(NC)"
-	cd $(TF_DIR)/environments/staging && $(TERRAFORM) plan -out=tfplan
+plan-hom: validate-hom
+	@echo "$(BLUE)Planning changes for hom environment...$(NC)"
+	cd $(TF_DIR)/environments/hom && $(TERRAFORM) plan -out=tfplan
 
 plan-prod: validate-prod
 	@echo "$(RED)Planning changes for PROD - Review carefully!$(NC)"
@@ -138,9 +143,9 @@ apply-dev:
 	@echo "$(BLUE)Applying changes for dev...$(NC)"
 	cd $(TF_DIR)/environments/dev && $(TERRAFORM) apply tfplan
 
-apply-staging:
-	@echo "$(BLUE)Applying changes for staging...$(NC)"
-	cd $(TF_DIR)/environments/staging && $(TERRAFORM) apply tfplan
+apply-hom:
+	@echo "$(BLUE)Applying changes for hom environment...$(NC)"
+	cd $(TF_DIR)/environments/hom && $(TERRAFORM) apply tfplan
 
 apply-prod:
 	@echo "$(RED)Applying changes for PROD - This requires manual approval!$(NC)"
@@ -154,9 +159,9 @@ destroy-dev:
 	@echo "$(YELLOW)Destroying dev infrastructure...$(NC)"
 	cd $(TF_DIR)/environments/dev && $(TERRAFORM) destroy
 
-destroy-staging:
-	@echo "$(YELLOW)Destroying staging infrastructure...$(NC)"
-	cd $(TF_DIR)/environments/staging && $(TERRAFORM) destroy
+destroy-hom:
+	@echo "$(YELLOW)Destroying hom infrastructure...$(NC)"
+	cd $(TF_DIR)/environments/hom && $(TERRAFORM) destroy
 
 destroy-prod:
 	@echo "$(RED)Destroying PROD infrastructure - Manual approval required!$(NC)"
@@ -171,9 +176,9 @@ refresh-dev:
 	@echo "$(BLUE)Refreshing dev state...$(NC)"
 	cd $(TF_DIR)/environments/dev && $(TERRAFORM) refresh
 
-refresh-staging:
-	@echo "$(BLUE)Refreshing staging state...$(NC)"
-	cd $(TF_DIR)/environments/staging && $(TERRAFORM) refresh
+refresh-hom:
+	@echo "$(BLUE)Refreshing hom state...$(NC)"
+	cd $(TF_DIR)/environments/hom && $(TERRAFORM) refresh
 
 refresh-prod:
 	@echo "$(BLUE)Refreshing prod state...$(NC)"
@@ -186,9 +191,9 @@ output-dev:
 	@echo "$(BLUE)Dev Environment Outputs:$(NC)"
 	cd $(TF_DIR)/environments/dev && $(TERRAFORM) output
 
-output-staging:
-	@echo "$(BLUE)Staging Environment Outputs:$(NC)"
-	cd $(TF_DIR)/environments/staging && $(TERRAFORM) output
+output-hom:
+	@echo "$(BLUE)Hom Environment Outputs:$(NC)"
+	cd $(TF_DIR)/environments/hom && $(TERRAFORM) output
 
 output-prod:
 	@echo "$(BLUE)Prod Environment Outputs:$(NC)"

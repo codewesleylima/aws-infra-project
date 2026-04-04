@@ -120,6 +120,10 @@ build/
 dist/
 *.egg-info/
 
+# Java / Spring Boot
+target/
+library-app/target/
+
 # ==============================================
 # Testing
 # ==============================================

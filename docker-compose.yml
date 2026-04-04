@@ -19,7 +19,7 @@ services:
 
   terraform:
     image: hashicorp/terraform:1.6.6
-    working_dir: /workspace/terraform/environments/dev
+    working_dir: /workspace/infra/environments/dev
     volumes:
       - ./:/workspace
     environment:
@@ -31,3 +31,15 @@ services:
       localstack:
         condition: service_healthy
     entrypoint: ['terraform']
+
+  library-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: library-app
+    ports:
+      - '8080:8080'
+    depends_on:
+      - localstack
+    environment:
+      SPRING_PROFILES_ACTIVE: local

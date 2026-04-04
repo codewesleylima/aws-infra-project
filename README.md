@@ -1,4 +1,4 @@
-# AWS Infrastructure Project
+# Spring Boot Book Library
 
 [![CI/CD Pipeline](https://github.com/codewesleylima/aws-infra-project/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/codewesleylima/aws-infra-project/actions/workflows/ci-cd.yml)
 [![Security Scan](https://github.com/codewesleylima/aws-infra-project/actions/workflows/terraform-security.yml/badge.svg)](https://github.com/codewesleylima/aws-infra-project/actions/workflows/terraform-security.yml)
@@ -7,7 +7,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Progress](https://img.shields.io/badge/Completion-23%2F27-brightgreen)](ROADMAP.md)
 
-Infraestrutura AWS completa com CI/CD, seguindo as melhores práticas de segurança e IaC (Infrastructure as Code).
+Aplicação Spring Boot para gerenciamento de biblioteca de livros integrada à infraestrutura AWS existente. Este projeto combina:
+- aplicação de catálogo de livros em Java + Spring Boot
+- infraestrutura AWS gerenciada com Terraform
+- testes locais com Docker Compose e LocalStack
+
 
 ## 📋 Índice
 
@@ -39,7 +43,9 @@ Infraestrutura AWS completa com CI/CD, seguindo as melhores práticas de seguran
 
 ## Visão Geral
 
-Este projeto implementa uma infraestrutura AWS escalável e segura utilizando Terraform, com pipeline CI/CD automatizado via GitHub Actions.
+Este projeto implementa uma aplicação de biblioteca de livros em Spring Boot integrada com infraestrutura AWS gerenciada por Terraform.
+
+A aplicação `library-app` oferece APIs REST para criar, consultar, atualizar e excluir livros, enquanto os recursos de infraestrutura suportam o deploy seguro e escalável.
 
 **Recursos principais:**
 - VPC com subnets públicas e privadas
@@ -73,7 +79,7 @@ Este projeto implementa uma infraestrutura AWS escalável e segura utilizando Te
 
 #### Operações & Documentação
 - **Operational Runbooks**: Procedimentos para deploy, rollback, scaling, incident response
-- **Getting Started Guide**: Setup passo a passo para environments de dev/staging/prod
+- **Getting Started Guide**: Setup passo a passo para environments de dev/hom/prod
 - **Documentation Suite**: ARCHITECTURE, COST_ESTIMATION, DOCKER_OPTIMIZATION, BRANCH_PROTECTION, VERSION_PINNING
 
 [Ver roadmap completo →](docs/ROADMAP.md)
@@ -122,13 +128,22 @@ cd aws-infra-project
 ./scripts/setup-pre-commit.sh
 
 # Deploy dev (com AWS)
-cd terraform/environments/dev
+cd infra/environments/dev
 terraform init && terraform plan && terraform apply
 
 # OU deploy local (sem AWS)
 docker run -d -p 4566:4566 --name localstack localstack/localstack
 terraform init -backend=false && terraform plan
 ```
+
+## Rodando a aplicação Spring Boot
+
+```bash
+cd library-app
+mvn spring-boot:run
+```
+
+A API ficará disponível em `http://localhost:8080`.
 
 ## Usando Make
 
@@ -143,12 +158,12 @@ make check-all           # Formato + validação + lint
 
 # Planejar mudanças
 make plan-dev
-make plan-staging
+make plan-hom
 make plan-prod          # Requer aprovação manual
 
 # Aplicar infraestrutura
 make apply-dev
-make apply-staging
+make apply-hom
 # make apply-prod      # Requer verificação extra
 
 # Estimar custos
@@ -173,7 +188,7 @@ make security-check     # TFSec scan
 Monitoramento e alertas centralizados para produção.
 
 ```bash
-├── terraform/modules/cloudwatch/
+├── infra/modules/cloudwatch/
 │   ├── main.tf              # Dashboard com 8 widgets
 │   │                        # 7 CloudWatch alarms
 │   │                        # Log groups com retenção
@@ -183,19 +198,19 @@ Monitoramento e alertas centralizados para produção.
 │   └── README.md            # Docs com exemplos
 ```
 
-**Recurso**: `terraform/modules/cloudwatch/main.tf`
+**Recurso**: `infra/modules/cloudwatch/main.tf`
 - **Dashboard JSON**: 8 widgets (ALB, ECS, RDS, logs, alarms)
 - **Alarms**: Response time, 5XX errors, CPU/Memory, storage, task count, NAT errors
 - **Log Groups**: `/ecs/{project}-{env}`, `/rds/{project}-{env}`
 - **Metric Filters**: ApplicationErrorCount, HighLatencyRequests
 
-Integrado em: `terraform/environments/prod/main.tf` ✅
+Integrado em: `infra/environments/prod/main.tf` ✅
 
 ### ✨ Security Groups Module
 5 security groups reutilizáveis com permissões granulares.
 
 ```bash
-├── terraform/modules/security_groups/
+├── infra/modules/security_groups/
 │   ├── main.tf              # 5 security groups
 │   │                        # ALB, ECS, RDS, Lambda, VPC Endpoints
 │   ├── variables.tf         # 18+ validações
@@ -210,7 +225,7 @@ Integrado em: `terraform/environments/prod/main.tf` ✅
 - **Lambda SG**: Outbound only (sem inbound)
 - **VPC Endpoints SG**: HTTPS (443) para APIs AWS
 
-Integrado em: `terraform/environments/prod/main.tf` ✅
+Integrado em: `infra/environments/prod/main.tf` ✅
 
 ## Estrutura do Projeto
 
@@ -225,7 +240,7 @@ aws-infra-project/
 │   ├── CODEOWNERS                       # Roteamento de reviews
 │   └── pull_request_template.md
 │
-├── terraform/
+├── infra/
 │   ├── modules/
 │   │   ├── vpc/                         # Rede e subnets
 │   │   ├── ecs/                         # Containers Fargate
@@ -243,7 +258,7 @@ aws-infra-project/
 │       ├── dev/                         # Desenvolvimento
 │       │   ├── main.tf, variables.tf, outputs.tf
 │       │   └── terraform.tfvars
-│       ├── staging/                     # Staging
+│       ├── hom/                         # Homologação
 │       │   ├── main.tf, variables.tf, outputs.tf
 │       │   └── terraform.tfvars
 │       └── prod/                        # Produção
@@ -283,7 +298,7 @@ aws-infra-project/
 | Ambiente | Descrição | Branch | Limite |
 |----------|-----------|--------|--------|
 | `dev` | Desenvolvimento e testes | `develop` | Sem limite |
-| `staging` | Validação pré-produção | `staging` | 1 aprovação |
+| `hom` | Homologação / pré-produção | `hom` | 1 aprovação |
 | `prod` | Produção | `main` | 2 aprovações |
 
 ## Documentação
@@ -321,7 +336,7 @@ aws-infra-project/
 ### 🚀 Operações & DevOps
 
 - **[docs/RUNBOOKS.md](docs/RUNBOOKS.md)** - Procedimentos operacionais
-  - Deployment (dev, staging, prod)
+  - Deployment (dev, hom, prod)
   - Rollback < 5 minutos
   - Scaling (ECS, RDS)
   - Incident response
@@ -406,7 +421,7 @@ Implementação de múltiplas camadas de segurança:
 **Code & Infrastructure**
 - ✅ Pre-commit hooks (terraform fmt, trivy, gitleaks, yamllint, shellcheck)
 - ✅ Terraform validate em cada commit
-- ✅ Branch protection com 2+ approvals (main), 1+ (staging)
+- ✅ Branch protection com 2+ approvals (main), 1+ (hom)
 - ✅ Secret detection (Gitleaks, GitGuardian) na CI/CD
 - ✅ Automated security scanning (TFSec, Trivy, Checkov)
 

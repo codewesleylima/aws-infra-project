@@ -54,7 +54,7 @@ cd aws-infra-project
 
 # Verify structure
 ls -la
-# Should show: Makefile, Dockerfile, README.md, terraform/, docs/, scripts/, etc.
+# Should show: Makefile, Dockerfile, README.md, infra/, docs/, scripts/, etc.
 ```
 
 #### Step 3: Install Development Tools
@@ -78,7 +78,7 @@ terraform -version
 
 ```bash
 # Navigate to dev environment
-cd terraform/environments/dev
+cd infra/environments/dev
 
 # Create a variables file (optional, uses defaults)
 cat > terraform.tfvars << EOF
@@ -188,7 +188,7 @@ wget -O - http://localhost:4566/_localstack/health | jq
 ```bash
 # Clone and navigate
 git clone https://github.com/your-org/aws-infra-project.git
-cd aws-infra-project/terraform/environments/dev
+cd aws-infra-project/infra/environments/dev
 
 # Create terraform.tfvars for LocalStack
 cat > terraform.tfvars << EOF
@@ -242,7 +242,7 @@ make fmt
 
 # Validate all environments
 make validate-dev
-make validate-staging
+make validate-hom
 make validate-prod
 
 # Or validate all at once
@@ -250,12 +250,12 @@ make check-all
 
 # Plan changes
 make plan-dev
-make plan-staging
+make plan-hom
 make plan-prod
 
 # Deploy
 make apply-dev
-make apply-staging
+make apply-hom
 
 # Destroy (dev only - production requires manual approval)
 make destroy-dev
@@ -291,7 +291,7 @@ Review [CloudWatch Guide](./docs/CLOUDWATCH.md) to:
 
 ### 4. Configure Your Application
 
-Update [Terraform variables](./terraform/environments/dev/variables.tf):
+Update [Terraform variables](./infra/environments/dev/variables.tf):
 
 ```hcl
 variable "container_image" {
@@ -347,12 +347,12 @@ terraform apply
 
 ```bash
 # Increase number of running tasks
-# Edit terraform/environments/prod/main.tf:
+# Edit infra/environments/prod/main.tf:
 # Change desired_count = 5  (from 3)
 
 # Then apply
-cd terraform/environments/prod
-terraform apply
+cd infra/environments/prod
+erraform apply
 ```
 
 ### View Logs
@@ -389,7 +389,7 @@ aws ecs describe-services \
 
 ```bash
 # Only safe in development
-cd terraform/environments/dev
+cd infra/environments/dev
 
 # See what will be destroyed
 terraform plan -destroy
@@ -453,7 +453,7 @@ terraform apply 2>&1 | head -20
 ```bash
 # Ensure you're in the correct directory
 pwd
-# Should be: aws-infra-project/terraform/environments/{dev,staging,prod}
+# Should be: aws-infra-project/infra/environments/{dev,hom,prod}
 
 # Re-initialize Terraform
 terraform init -upgrade
@@ -515,7 +515,7 @@ cd aws-infra-project
 ./scripts/setup-pre-commit.sh
 
 # Check status of any environment
-cd terraform/environments/dev
+cd infra/environments/dev
 terraform plan
 
 # View recent changes

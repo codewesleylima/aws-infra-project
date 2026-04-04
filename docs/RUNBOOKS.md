@@ -20,7 +20,7 @@ Complete step-by-step guides for common operational tasks.
 
 - [ ] All tests passing in CI/CD
 - [ ] Code reviewed and approved by 2+ team members (prod)
-- [ ] Feature branch is up to date with main/staging
+- [ ] Feature branch is up to date with main/hom
 - [ ] No open security vulnerabilities
 - [ ] Terraform plan reviewed (no unexpected deletions)
 - [ ] Database migrations prepared (if applicable)
@@ -38,7 +38,7 @@ git checkout develop
 git pull origin develop
 
 # 2. Plan the infrastructure changes
-cd terraform/environments/dev
+cd infra/environments/dev
 terraform plan -out=tfplan
 
 # 3. Review the plan - should only show expected changes
@@ -57,7 +57,7 @@ git push origin develop
 # - Verify ALB health check: curl http://dev-alb-xxx.elb.amazonaws.com/health
 ```
 
-### Staging Environment Deployment
+### Hom Environment Deployment
 
 **Duration:** 15-20 minutes
 
@@ -71,28 +71,28 @@ git checkout -b release/v$(date +%Y%m%d-%H%M%S)
 # - Update VERSION file
 # - Update CHANGELOG.md with release notes
 git add VERSION CHANGELOG.md
-git commit -m "chore(release): version bump for staging release"
+git commit -m "chore(release): version bump for hom release"
 
 # 3. Push to GitHub
 git push origin release/v*
 
-# 4. Open pull request from release/* to staging
+# 4. Open pull request from release/* to hom
 # - Title: "Release: v1.2.3"
 # - Description: Link to tickets, list of changes
 # - Wait for 1+ approval
 
-# 5. Plan staging infrastructure
-cd terraform/environments/staging
+# 5. Plan hom infrastructure
+cd infra/environments/hom
 terraform plan -out=tfplan
 
-# 6. Merge to staging
+# 6. Merge to hom
 # (GitHub status checks will run automatically)
 git merge --no-ff release/v*
 
-# 7. Verify staging deployment
-# - Check ALB health: curl https://staging-alb-xxx.elb.amazonaws.com/health
-# - Run smoke tests: ./scripts/smoke-tests.sh staging
-# - Check logs: aws logs tail /ecs/myapp-staging --follow
+# 7. Verify hom deployment
+# - Check ALB health: curl https://hom-alb-xxx.elb.amazonaws.com/health
+# - Run smoke tests: ./scripts/smoke-tests.sh hom
+# - Check logs: aws logs tail /ecs/myapp-hom --follow
 # - Monitor metrics for 10 minutes
 
 # 8. Clean up release branch
@@ -104,19 +104,19 @@ git branch -d release/v*
 **Duration:** 30-45 minutes (with verification)
 
 ```bash
-# 1. Verify staging is healthy
+# 1. Verify hom is healthy
 # (If not, halt deployment and investigate)
-./scripts/smoke-tests.sh staging
+./scripts/smoke-tests.sh hom
 # All tests must pass
 
-# 2. Create pull request from staging to main
+# 2. Create pull request from hom to main
 git checkout main
 git pull origin main
-git merge staging --no-ff
+git merge hom --no-ff
 # OR use GitHub UI:
 # - Go to Pull Requests
 # - Click "New Pull Request"
-# - Base: main, Compare: staging
+# - Base: main, Compare: hom
 
 # 3. Deployment requires minimum 2 approvals
 # Wait for:
@@ -245,7 +245,7 @@ If infrastructure change caused the issue:
 
 ```bash
 # 1. Identify the bad commit
-git log --oneline terraform/environments/prod/main.tf | head -5
+git log --oneline infra/environments/prod/main.tf | head -5
 
 # 2. Revert the specific change
 git revert <commit-hash> --no-edit
@@ -254,7 +254,7 @@ git revert <commit-hash> --no-edit
 git push origin main
 
 # 4. Plan and apply revert
-cd terraform/environments/prod
+cd infra/environments/prod
 terraform plan -out=tfplan
 terraform apply tfplan
 
@@ -289,7 +289,7 @@ aws ecs update-service \
   --desired-count 10
 
 # Option C: Terraform
-# Modify terraform/environments/prod/main.tf
+# Modify infra/environments/prod/main.tf
 # Change: desired_count = 10
 # Then: terraform apply
 

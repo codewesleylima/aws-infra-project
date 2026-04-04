@@ -44,7 +44,7 @@ if [ "$USE_INFRACOST" = true ]; then
         local env=$1
         echo "Estimating costs for $env environment..."
         
-        cd "$PROJECT_ROOT/terraform/environments/$env"
+        cd "$PROJECT_ROOT/infra/environments/$env"
         
         case $FORMAT in
             json)
@@ -71,7 +71,7 @@ if [ "$USE_INFRACOST" = true ]; then
     # Estimate for specified environment(s)
     case $ENVIRONMENT in
         all)
-            for env in dev staging prod; do
+            for env in dev hom prod; do
                 estimate_with_infracost "$env"
                 echo ""
             done
@@ -88,8 +88,8 @@ if [ "$USE_INFRACOST" = true ]; then
     echo "╚════════════════════════════════════════════════════════════════╝"
     echo ""
     
-    if [ -f "/tmp/infracost-dev.json" ] && [ -f "/tmp/infracost-staging.json" ] && [ -f "/tmp/infracost-prod.json" ]; then
-        infracost breakdown --path "$PROJECT_ROOT/terraform/environments" \
+    if [ -f "/tmp/infracost-dev.json" ] && [ -f "/tmp/infracost-hom.json" ] && [ -f "/tmp/infracost-prod.json" ]; then
+        infracost breakdown --path "$PROJECT_ROOT/infra/environments" \
             --format table \
             2>/dev/null || true
     fi
@@ -120,8 +120,8 @@ else
                 echo "   💰 Total Estimated Monthly: ~$155"
                 echo "   💰 Total Estimated Annual:  ~$1,860"
                 ;;
-            staging)
-                echo "📊 Staging Environment (us-east-1) - Monthly Costs:"
+            hom)
+                echo "📊 Hom Environment (us-east-1) - Monthly Costs:"
                 echo "   VPC (NAT Gateway, Endpoints):        ~$45"
                 echo "   ECS Fargate (3 tasks × 0.5 vCPU):    ~$35"
                 echo "   RDS (db.t3.small Multi-AZ):          ~$120"
@@ -151,7 +151,7 @@ else
     case $ENVIRONMENT in
         all)
             estimate_manual dev
-            estimate_manual staging
+            estimate_manual hom
             estimate_manual prod
             ;;
         *)
